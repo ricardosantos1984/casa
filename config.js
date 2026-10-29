@@ -7,10 +7,10 @@
 // ============================================================
 window.CONFIG = {
   // Ex.: "https://abcdefghijkl.supabase.co"
-  SUPABASE_URL: "",
+  SUPABASE_URL: "https://uthotfdcfwrdyivhwkpw.supabase.co",
 
   // A chave "anon" / "publishable" (NUNCA a "service_role" / "secret")
-  SUPABASE_KEY: "",
+  SUPABASE_KEY: "sb_publishable_1NO-glUWpi7oEzQUS2xX0A_7TS9qNpu",
 
   // Pessoas da casa (aparecem nas listas de escolha)
   PESSOAS: ["Ricardo", "Carolina", "Ema"],
