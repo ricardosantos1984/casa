@@ -619,6 +619,45 @@ async function vMedicos(el) {
   await seccao(el, COLS.saude);
 }
 
+
+/* ---------- menu (ícones) ---------- */
+const ICO = {
+  inicio: '<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  ementas: '<path d="M6 3v7a2 2 0 0 0 4 0V3M8 12v9M17 21V3c-2 1-3 3-3 7s1 4 3 4"/>',
+  compras: '<path d="M3 4h2.5l2.2 11h10.6L21 7.5H6.4"/><circle cx="9.5" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/>',
+  despesas: '<path d="M17.5 6.5A7 7 0 1 0 17.5 17.5"/><path d="M4 10.5h9M4 13.5h9"/>',
+  veiculos: '<path d="M4 13.5l1.8-5.5A2 2 0 0 1 7.7 6.5h8.6a2 2 0 0 1 1.9 1.5L20 13.5v4.5H4z"/><path d="M4 13.5h16"/><circle cx="8" cy="16" r=".8"/><circle cx="16" cy="16" r=".8"/><path d="M6 18v2M18 18v2"/>',
+  casa: '<path d="M14.5 5.5a4 4 0 0 0 5 5l-8.8 8.8a2.1 2.1 0 0 1-3-3l8.8-8.8z"/><path d="M14.5 5.5l2-2 4 4-2 2"/>',
+  familia: '<circle cx="9" cy="8" r="3"/><path d="M3.5 20c0-3.2 2.5-5.5 5.5-5.5s5.5 2.3 5.5 5.5"/><circle cx="17" cy="9.5" r="2.3"/><path d="M16.5 14.6c2.6.2 4.4 2.3 4.4 5.4"/>',
+  medicos: '<path d="M12 20.5s-8-4.8-8-10.8A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.7c0 6-8 10.8-8 10.8z"/><path d="M8 12h2l1.2-2 1.6 4 1.2-2h2"/>',
+  mais: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
+};
+const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["medicos", "Médicos"]];
+const svg = (k) => `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]}</svg>`;
+const NA_BARRA = ["inicio", "ementas", "compras", "despesas"];
+function montarMenus() {
+  $("#nav").innerHTML = SECOES.map(([r, l]) => `<a href="#${r}" data-r="${r}">${svg(r)}<span>${l}</span></a>`).join("");
+  $("#tabbar").innerHTML = SECOES.filter(([r]) => NA_BARRA.includes(r)).map(([r, l]) => `<a href="#${r}" data-r="${r}">${svg(r)}<span>${l}</span></a>`).join("")
+    + `<button type="button" id="btn-mais" data-r="mais">${svg("mais")}<span>Mais</span></button>`;
+  $("#btn-mais").onclick = abrirMais;
+}
+function abrirMais() {
+  const dlg = $("#dlg");
+  const online = store && store.modo === "online";
+  dlg.innerHTML = `<div class="form folha-mais"><div class="pega" aria-hidden="true"></div><h2>Mais</h2>
+    <div class="mosaico">${SECOES.filter(([r]) => !NA_BARRA.includes(r)).map(([r, l]) => `<a href="#${r}" class="tile">${svg(r)}<span>${l}</span></a>`).join("")}</div>
+    ${online ? `<div class="acoes"><button type="button" class="sec" data-a="senha">Mudar senha</button><button type="button" class="sec" data-a="sair">Sair</button></div>` : ""}
+    <button type="button" class="sec grande" data-a="fechar">Fechar</button></div>`;
+  dlg.onclick = (e) => {
+    if (e.target === dlg || e.target.closest("[data-a=fechar]") || e.target.closest("a.tile")) dlg.close();
+    if (e.target.closest("[data-a=senha]")) { dlg.close(); dialogoSenha("Mudar senha"); }
+    if (e.target.closest("[data-a=sair]")) { dlg.close(); sb.auth.signOut(); }
+  };
+  dlg.classList.add("de-baixo");
+  dlg.addEventListener("close", () => { dlg.onclick = null; dlg.classList.remove("de-baixo"); }, { once: true });
+  dlg.showModal();
+}
+
 /* =====================================================================
    NAVEGAÇÃO
    ===================================================================== */
@@ -626,6 +665,8 @@ const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: 
 async function render() {
   if (!store) return;
   const h = location.hash.slice(1), rota = ROTAS[h] ? h : "inicio";
+  const naBarra = NA_BARRA.includes(rota);
+  $$("#tabbar [data-r]").forEach((a) => a.classList.toggle("ativo", a.dataset.r === rota || (a.dataset.r === "mais" && !naBarra)));
   $$("#nav a").forEach((a) => { const on = a.dataset.r === rota; a.classList.toggle("ativo", on); if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   const v = document.createElement("div");
   v.className = "vista";
@@ -696,7 +737,7 @@ async function iniciar() {
   if (!C.SUPABASE_URL || !C.SUPABASE_KEY) {
     EU = PESSOAS[0] || "";
     store = storeLocal();
-    return mostrarApp("Modo demonstração · dados só neste browser");
+    return mostrarApp("Demonstração · dados só neste aparelho");
   }
   try {
     await carregarScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js");
@@ -731,4 +772,5 @@ async function iniciar() {
   if (data.session) await entrar(data.session); else mostrarLogin();
 }
 
+montarMenus();
 iniciar();

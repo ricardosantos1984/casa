@@ -2,8 +2,10 @@
 <html lang="pt-PT">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#2F5640">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d1d1d">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="robots" content="noindex, nofollow">
 <title>A Nossa Casa</title>
@@ -15,7 +17,7 @@
 <!-- Ecrã de entrada -->
 <div id="login" class="login" hidden>
   <form id="form-login" class="login-caixa">
-    <div class="logo">🏠</div>
+    <div class="logo">⌂</div>
     <h1>A Nossa Casa</h1>
     <p class="sub">Entra com o teu email e senha.</p>
     <label class="campo"><span>Email</span><input type="email" name="email" autocomplete="username" required></label>
@@ -29,23 +31,15 @@
 <!-- Aplicação -->
 <div id="app" hidden>
   <header class="topo-app">
-    <a class="marca" href="#inicio">🏠 A Nossa Casa</a>
+    <a class="marca" href="#inicio"><span class="marca-ico">⌂</span> A Nossa Casa</a>
     <span id="estado" class="estado"></span>
     <span class="esp"></span>
     <button class="sec peq" id="btn-senha" hidden>Mudar senha</button>
     <button class="sec peq" id="btn-sair" hidden>Sair</button>
   </header>
-  <nav id="nav" class="nav" aria-label="Secções">
-    <a href="#inicio" data-r="inicio">Início</a>
-    <a href="#ementas" data-r="ementas">Ementas</a>
-    <a href="#compras" data-r="compras">Compras</a>
-    <a href="#despesas" data-r="despesas">Despesas</a>
-    <a href="#veiculos" data-r="veiculos">Veículos</a>
-    <a href="#casa" data-r="casa">Casa</a>
-    <a href="#familia" data-r="familia">Família</a>
-    <a href="#medicos" data-r="medicos">Médicos</a>
-  </nav>
+  <nav id="nav" class="nav" aria-label="Secções"></nav>
   <main id="conteudo" class="conteudo"></main>
+  <nav id="tabbar" class="tabbar" aria-label="Menu principal"></nav>
 </div>
 
 <dialog id="dlg"></dialog>
