@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#2F5640">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="robots" content="noindex, nofollow">
+<title>A Nossa Casa</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏠%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Ecrã de entrada -->
+<div id="login" class="login" hidden>
+  <form id="form-login" class="login-caixa">
+    <div class="logo">🏠</div>
+    <h1>A Nossa Casa</h1>
+    <p class="sub">Entra com o teu email e senha.</p>
+    <label class="campo"><span>Email</span><input type="email" name="email" autocomplete="username" required></label>
+    <label class="campo"><span>Senha</span><input type="password" name="senha" autocomplete="current-password" required></label>
+    <p id="login-msg" class="msg" role="alert"></p>
+    <button class="pri grande" type="submit">Entrar</button>
+    <button class="link" type="button" id="esqueci">Esqueci-me da senha</button>
+  </form>
+</div>
+
+<!-- Aplicação -->
+<div id="app" hidden>
+  <header class="topo-app">
+    <a class="marca" href="#inicio">🏠 A Nossa Casa</a>
+    <span id="estado" class="estado"></span>
+    <span class="esp"></span>
+    <button class="sec peq" id="btn-senha" hidden>Mudar senha</button>
+    <button class="sec peq" id="btn-sair" hidden>Sair</button>
+  </header>
+  <nav id="nav" class="nav" aria-label="Secções">
+    <a href="#inicio" data-r="inicio">Início</a>
+    <a href="#ementas" data-r="ementas">Ementas</a>
+    <a href="#compras" data-r="compras">Compras</a>
+    <a href="#despesas" data-r="despesas">Despesas</a>
+    <a href="#veiculos" data-r="veiculos">Veículos</a>
+    <a href="#casa" data-r="casa">Casa</a>
+    <a href="#familia" data-r="familia">Família</a>
+    <a href="#medicos" data-r="medicos">Médicos</a>
+  </nav>
+  <main id="conteudo" class="conteudo"></main>
+</div>
+
+<dialog id="dlg"></dialog>
+<div id="aviso" class="aviso" role="status" aria-live="polite"></div>
+
+<!-- Folha A4 da ementa (só aparece ao imprimir) -->
+<div id="folha"></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
