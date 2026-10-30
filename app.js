@@ -69,6 +69,7 @@ function storeLocal() {
       const x = ler(); x.ficheiros = x.ficheiros || {}; x.ficheiros[caminho] = url; gravar(x);
     },
     async listDocs() { return Object.entries(ler().docs || {}).map(([id, dados]) => ({ id, dados })); },
+    async removeDoc(id) { const x = ler(); delete x.docs[id]; gravar(x); },
     async urls(caminhos) { const x = ler().ficheiros || {}; return Object.fromEntries(caminhos.map((c) => [c, x[c] || ""])); },
     async apagarFicheiros(caminhos) { const x = ler(); caminhos.forEach((c) => { if (x.ficheiros) delete x.ficheiros[c]; }); gravar(x); },
   };
@@ -88,6 +89,7 @@ function storeSupabase() {
       if (r.error) throw new Error(/bucket not found/i.test(r.error.message) ? "Falta criar o espaço de ficheiros no Supabase (ver instruções)" : r.error.message);
     },
     async listDocs() { return ok(await sb.from("documentos").select("id,dados").not("id", "like", "foto-%")); },
+    async removeDoc(id) { ok(await sb.from("documentos").delete().eq("id", id)); },
     async urls(caminhos) {
       if (!caminhos.length) return {};
       const r = await sb.storage.from("anexos").createSignedUrls(caminhos, 3600);
@@ -1409,6 +1411,7 @@ const ICO = {
   medicos: '<path d="M12 20.5s-8-4.8-8-10.8A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.7c0 6-8 10.8-8 10.8z"/><path d="M8 12h2l1.2-2 1.6 4 1.2-2h2"/>',
   mover: '<path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/>',
   ferias: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
+  dados: '<ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v6.5c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V5.5M4.5 12v6.5c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V12"/>',
   camara: '<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.5-2.5h5.6L16.3 7h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.8" r="3.3"/>',
   impressora: '<path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/>',
   estudo: '<path d="M4 19V5.5A2.5 2.5 0 0 1 6.5 3H20v14H6.5A2.5 2.5 0 0 0 4 19.5 2.5 2.5 0 0 0 6.5 22H20v-5"/><path d="M8.5 7.5h7M8.5 11h5"/>',
@@ -1428,7 +1431,7 @@ const ICO = {
   euro: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.8a4 4 0 1 0 0 6.4M7.5 11h6M7.5 13.5h6"/>',
   mais: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
 };
-const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["escola", "Escola Ema"], ["estudo", "Estudo"], ["viagens", "Viagens"], ["ferias", "Férias e aniversários"], ["medicos", "Médicos"]];
+const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["escola", "Escola Ema"], ["estudo", "Estudo"], ["viagens", "Viagens"], ["ferias", "Férias e aniversários"], ["medicos", "Médicos"], ["dados", "Gerir dados"]];
 const svg = (k) => `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]}</svg>`;
 const NA_BARRA = ["inicio", "ementas", "compras", "despesas"];
 function montarMenus() {
@@ -1456,10 +1459,86 @@ function abrirMais() {
   dlg.showModal();
 }
 
+
+/* =====================================================================
+   GERIR DADOS (apagar anexos e registos)
+   ===================================================================== */
+const campoData = (col) => (col.campos.find((c) => c.t === "date") || {}).k;
+async function vDados(el) {
+  const listas = {};
+  for (const col of Object.values(COLS)) listas[col.id] = await store.list(col.id);
+  const docs = await store.listDocs();
+  const semanas = docs.filter((d) => /^ementa-\d{4}-\d{2}-\d{2}$/.test(d.id)).sort((a, b) => a.id.localeCompare(b.id));
+  const anexos = [];
+  Object.values(COLS).forEach((col) => listas[col.id].forEach((it) => (it.anexos || []).forEach((a) => anexos.push({ ...a, col, it }))));
+  const totalB = anexos.reduce((s, a) => s + (a.tamanho || 0), 0);
+  const umAno = somaDias(hoje(), -365);
+  el.innerHTML = `${cab("Gerir dados", "Apagar ficheiros anexos, registos antigos ou secções inteiras.")}
+    <section class="seccao"><div class="sec-cab"><h2>📎 Anexos</h2><span class="det">${anexos.length} ${anexos.length === 1 ? "ficheiro" : "ficheiros"} · ${tamanho(totalB)} de ~1 GB</span></div>
+      ${anexos.length ? `<div class="orc-b"><i class="verde" style="width:${Math.max(1, Math.min(100, (totalB / 1073741824) * 100))}%"></i></div>` : ""}
+      ${anexos.length ? anexos.sort((a, b) => (b.tamanho || 0) - (a.tamanho || 0)).map((a, i) => `<div class="anx" data-i="${i}"><span class="anx-ico">${icoFicheiro(a)}</span>
+        <span class="ct"><b class="anx-nome" style="color:var(--texto)">${esc(a.nome)}</b><span class="det">${esc(a.col.nome)} · ${esc(a.col.titulo(a.it))} · ${tamanho(a.tamanho || 0)}</span></span>
+        <button type="button" class="sec peq" data-anx="${i}">Apagar</button></div>`).join("") : `<p class="vazio">Não há ficheiros anexos.</p>`}
+    </section>
+    <section class="seccao"><h2>🗂️ Registos por secção</h2>
+      <p class="det" style="margin:0">Para apagar só um registo, abre-o na secção e toca em <b>Apagar</b>. Aqui podes apagar muitos de uma vez.</p>
+      ${Object.values(COLS).map((col) => { const n = listas[col.id].length, cd = campoData(col);
+        return `<div class="ing-prato"><span><b>${esc(col.id === "despesas" ? "Despesas" : col.nome)}</b><br><span class="det">${n} ${n === 1 ? "registo" : "registos"}</span></span>
+          <span class="acoes">${n && cd ? `<button type="button" class="sec peq" data-antigos="${col.id}">Antigos…</button>` : ""}${n ? `<button type="button" class="perigo peq" data-tudo="${col.id}">Apagar tudo</button>` : ""}</span></div>`; }).join("")}
+    </section>
+    <section class="seccao"><h2>🍽️ Ementas guardadas</h2>
+      <p class="det" style="margin:0">${semanas.length} ${semanas.length === 1 ? "semana guardada" : "semanas guardadas"}${semanas.length ? ` (desde ${fmtData(semanas[0].id.slice(7))})` : ""}.</p>
+      ${semanas.length ? `<div class="acoes"><label class="mes">Apagar semanas anteriores a <input type="date" id="em-data" value="${somaDias(hoje(), -90)}"></label><button type="button" class="perigo peq" id="em-apagar">Apagar</button></div>` : ""}
+    </section>
+    <section class="seccao"><h2>💾 Antes de apagar</h2><p class="det" style="margin:0">Faz uma cópia de segurança, para o caso de te arrependeres.</p><div><button type="button" class="sec" id="dados-copia">💾 Cópia de segurança (Excel)</button></div></section>`;
+  $("#dados-copia", el).onclick = exportarExcel;
+  const lista = anexos.sort((a, b) => (b.tamanho || 0) - (a.tamanho || 0));
+  el.onclick = async (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    try {
+      if (b.dataset.anx) {
+        const a = lista[+b.dataset.anx];
+        if (!confirm(`Apagar o ficheiro "${a.nome}"?`)) return;
+        await store.apagarFicheiros([a.caminho]);
+        await store.update(a.it.id, { ...semId(a.it), anexos: (a.it.anexos || []).filter((x) => x.caminho !== a.caminho) });
+        aviso("Ficheiro apagado"); render();
+      } else if (b.dataset.tudo) {
+        const col = COLS[b.dataset.tudo], itens = listas[col.id];
+        const r = prompt(`Vais apagar os ${itens.length} registos de "${col.nome}"${itens.some((i) => i.anexos && i.anexos.length) ? " e os seus anexos" : ""}.\nIsto não se pode desfazer. Escreve APAGAR para confirmar.`);
+        if ((r || "").trim().toUpperCase() !== "APAGAR") return aviso("Nada foi apagado");
+        await apagarVarios(itens); aviso(`${itens.length} registos apagados`); render();
+      } else if (b.dataset.antigos) {
+        const col = COLS[b.dataset.antigos], cd = campoData(col);
+        const lim = prompt(`Apagar os registos de "${col.nome}" com data anterior a (dd/mm/aaaa):`, fmtData(umAno));
+        if (!lim) return;
+        const m = lim.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (!m) return aviso("Data inválida. Usa o formato dd/mm/aaaa");
+        const iso = `${m[3]}-${pad(m[2])}-${pad(m[1])}`;
+        const alvo = listas[col.id].filter((i) => i[cd] && i[cd] < iso);
+        if (!alvo.length) return aviso("Não há registos anteriores a essa data");
+        if (!confirm(`Apagar ${alvo.length} ${alvo.length === 1 ? "registo" : "registos"} de "${col.nome}" anteriores a ${fmtData(iso)}?`)) return;
+        await apagarVarios(alvo); aviso(`${alvo.length} registos apagados`); render();
+      } else if (b.id === "em-apagar") {
+        const lim = $("#em-data", el).value; if (!lim) return;
+        const alvo = semanas.filter((d) => d.id.slice(7) < lim);
+        if (!alvo.length) return aviso("Não há semanas anteriores a essa data");
+        if (!confirm(`Apagar ${alvo.length} ${alvo.length === 1 ? "semana" : "semanas"} de ementa anteriores a ${fmtData(lim)}?`)) return;
+        for (const d of alvo) await store.removeDoc(d.id);
+        aviso(`${alvo.length} semanas apagadas`); render();
+      }
+    } catch (err) { erro(err); }
+  };
+}
+async function apagarVarios(itens) {
+  const fich = itens.flatMap((i) => (i.anexos || []).map((a) => a.caminho));
+  for (const i of itens) await store.remove(i.id);
+  if (fich.length) { try { await store.apagarFicheiros(fich); } catch (err) { console.error(err); } }
+}
+
 /* =====================================================================
    NAVEGAÇÃO
    ===================================================================== */
-const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, estudo: vEstudo, viagens: vViagens, ferias: vFerias, medicos: vMedicos };
+const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, estudo: vEstudo, viagens: vViagens, ferias: vFerias, medicos: vMedicos, dados: vDados };
 let ROTA_ARGS = [];
 async function render() {
   if (!store) return;
