@@ -57,15 +57,16 @@ input[type=checkbox]:checked::after{content:"";width:6px;height:12px;border:soli
 .msg.ok{color:var(--acento)}
 
 /* ---------- cabeçalho e menus ---------- */
-.topo-app{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 20px 10px;background:var(--vidro);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);position:sticky;top:0;z-index:10;border-bottom:1px solid var(--linha)}
+.topo-app{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) max(20px, calc((100% - 1180px) / 2 + 20px)) 10px;background:var(--vidro);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);position:sticky;top:0;z-index:10;border-bottom:1px solid var(--linha)}
 .marca{white-space:nowrap;flex:none;color:var(--texto);text-decoration:none;font-weight:800;font-size:18px;display:flex;align-items:center;gap:10px}
 .marca-ico{width:30px;height:30px;border-radius:9px;background:var(--acento);color:var(--acento-txt);display:grid;place-content:center;font-size:18px}
 .estado{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--suave);background:var(--painel);border:1px solid var(--linha);padding:4px 10px;border-radius:999px}
 .esp{flex:1}
-.nav{display:flex;gap:4px;padding:10px 20px;overflow-x:auto;scrollbar-width:none;max-width:1180px;margin:0 auto}
+.nav{display:flex;flex-wrap:wrap;gap:4px;padding:12px 20px 4px;max-width:1180px;margin:0 auto;box-sizing:border-box}
+
 .nav::-webkit-scrollbar{display:none}
-.nav a{flex:none;display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--suave);padding:9px 14px;border-radius:999px;font-weight:600;font-size:16px}
-.nav a svg{width:21px;height:21px}
+.nav a{flex:none;display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--suave);padding:8px 12px;border-radius:999px;font-weight:600;font-size:15px}
+.nav a svg{width:19px;height:19px}
 .nav a:hover{color:var(--texto);background:var(--painel)}
 .nav a.ativo{background:var(--acento);color:var(--acento-txt)}
 .tabbar{display:none}
