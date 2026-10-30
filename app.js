@@ -409,6 +409,43 @@ const COLS = {
     ordem: (a, b) => (a.levado === b.levado ? String(a.item).localeCompare(String(b.item)) : a.levado ? 1 : -1),
     acao: { l: (d) => (d.levado ? "Tirar" : "Na mala ✓"), fn: async (d) => { await store.update(d.id, { ...semId(d), levado: !d.levado }); } },
   },
+  aniversarios: {
+    ico: "bolo",
+    id: "aniversarios", nome: "Aniversários", item: "aniversário",
+    campos: [
+      { k: "nome", l: "Nome", t: "text", req: 1 },
+      { k: "nascimento", l: "Data de nascimento (se não souberes o ano, põe um aproximado)", t: "date", req: 1 },
+      { k: "relacao", l: "Quem é", t: "select", o: ["Família", "Amigo/a", "Colega", "Amigo/a da Ema", "Outro"] },
+      { k: "presente", l: "Ideias de presente", t: "text" },
+      { k: "notas", l: "Notas", t: "textarea" },
+    ],
+    titulo: (d) => d.nome,
+    detalhe: (d) => { if (!d.nascimento) return ""; const p = proximaAnual(d.nascimento), anos = +p.slice(0, 4) - +d.nascimento.slice(0, 4);
+      return junta(`faz ${anos} anos a ${dm(p)} (${deIso(p).toLocaleDateString("pt-PT", { weekday: "long" })})`, d.relacao, d.presente ? "🎁 " + d.presente : ""); },
+    alertas: (d) => { if (!d.nascimento) return []; const p = proximaAnual(d.nascimento), n = diasAte(p); return n <= 21 ? [{ nivel: n <= 3 ? "laranja" : "azul", dias: n, texto: n === 0 ? "É hoje! 🎉" : rel(n) }] : []; },
+    ordem: (a, b) => String(proximaAnual(a.nascimento || "2000-12-31")).localeCompare(String(proximaAnual(b.nascimento || "2000-12-31"))),
+    vazio: "Ainda não há aniversários. Começa pelos da família!",
+  },
+  ferias: {
+    ico: (d) => (d.tipo === "Férias escolares" ? "escola" : "ferias"),
+    id: "ferias", nome: "Férias e folgas", item: "período de férias",
+    campos: [
+      { k: "quem", l: "Quem", t: "select", o: () => [...PESSOAS, "Família"], req: 1, def: () => EU },
+      { k: "tipo", l: "Tipo", t: "select", o: ["Férias", "Folga / ponte", "Férias escolares", "Outro"], def: "Férias" },
+      { k: "inicio", l: "Primeiro dia", t: "date", req: 1 },
+      { k: "fim", l: "Último dia", t: "date", req: 1 },
+      { k: "destino", l: "Onde / planos", t: "text" },
+      { k: "aprovado", l: "Já aprovado no trabalho", t: "check" },
+      { k: "notas", l: "Notas", t: "textarea" },
+    ],
+    titulo: (d) => `${d.quem} — ${d.tipo || "Férias"}${d.destino ? " · " + d.destino : ""}`,
+    detalhe: (d) => junta(d.inicio ? fmtData(d.inicio) + (d.fim && d.fim !== d.inicio ? " a " + fmtData(d.fim) : "") : "", d.inicio && d.fim ? diasUteis(d.inicio, d.fim) + " dias úteis" : "", d.tipo === "Férias" || d.tipo === "Folga / ponte" ? (d.aprovado ? "aprovado ✓" : "por aprovar") : ""),
+    alertas: (d) => { if (!d.inicio) return []; const a = diasAte(d.inicio), b = diasAte(d.fim || d.inicio);
+      if (b < 0) return []; if (a <= 0) return [{ nivel: "azul", dias: 0, texto: "A decorrer, até " + dm(d.fim || d.inicio) + " 🌴" }];
+      return a <= 14 ? [{ nivel: a <= 3 ? "laranja" : "azul", dias: a, texto: "Começam " + rel(a) }] : []; },
+    ordem: (a, b) => { const fa = diasAte(a.fim || a.inicio) >= 0, fb = diasAte(b.fim || b.inicio) >= 0; if (fa !== fb) return fa ? -1 : 1; return fa ? String(a.inicio).localeCompare(String(b.inicio)) : String(b.inicio).localeCompare(String(a.inicio)); },
+    vazio: "Sem férias marcadas.",
+  },
   saude: {
     ico: "pilula",
     id: "saude", nome: "Vacinas, análises e medicação", item: "registo",
@@ -599,7 +636,7 @@ const cab = (titulo, sub) => `<div class="cab"><div><h1>${titulo}</h1>${sub ? `<
 /* =====================================================================
    INÍCIO
    ===================================================================== */
-const ROTA_DE = { veiculos: "veiculos", tarefas: "casa", garantias: "casa", datas: "familia", documentos: "familia", escola_testes: "escola", escola_eventos: "escola", viagens: "viagens", consultas: "medicos" };
+const ROTA_DE = { veiculos: "veiculos", tarefas: "casa", garantias: "casa", datas: "familia", documentos: "familia", escola_testes: "escola", escola_eventos: "escola", viagens: "viagens", ferias: "ferias", aniversarios: "ferias", consultas: "medicos" };
 
 let FOTO;
 const chaveFoto = () => "foto-" + (EU || "eu").toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g, "");
@@ -988,6 +1025,24 @@ async function vCompras(el) {
   };
 }
 
+
+/* ---------- feriados e dias úteis ---------- */
+const FERIADOS = {
+  "2026-01-01": "Ano Novo", "2026-04-03": "Sexta-feira Santa", "2026-04-05": "Páscoa", "2026-04-25": "Dia da Liberdade", "2026-05-01": "Dia do Trabalhador",
+  "2026-06-04": "Corpo de Deus", "2026-06-10": "Dia de Portugal", "2026-08-15": "Assunção de Nossa Senhora", "2026-10-05": "Implantação da República",
+  "2026-11-01": "Todos os Santos", "2026-12-01": "Restauração da Independência", "2026-12-08": "Imaculada Conceição", "2026-12-25": "Natal",
+  "2027-01-01": "Ano Novo", "2027-03-01": "Feriado municipal de Tomar", "2027-03-26": "Sexta-feira Santa", "2027-03-28": "Páscoa", "2027-04-25": "Dia da Liberdade",
+  "2027-05-01": "Dia do Trabalhador", "2027-05-27": "Corpo de Deus", "2027-06-10": "Dia de Portugal", "2027-08-15": "Assunção de Nossa Senhora",
+  "2027-10-05": "Implantação da República", "2027-11-01": "Todos os Santos", "2027-12-01": "Restauração da Independência", "2027-12-08": "Imaculada Conceição", "2027-12-25": "Natal",
+};
+function diasUteis(a, b) {
+  if (!a || !b || b < a) return 0;
+  let n = 0;
+  for (let d = a; d <= b; d = somaDias(d, 1)) { const w = deIso(d).getDay(); if (w !== 0 && w !== 6 && !FERIADOS[d]) n++; }
+  return n;
+}
+const DIAS_FERIAS = 22;
+
 /* =====================================================================
    DESPESAS, VEÍCULOS, CASA, FAMÍLIA, MÉDICOS
    ===================================================================== */
@@ -1246,6 +1301,25 @@ async function vViagens(el) {
   await seccao(el, COLS.mala);
 }
 
+
+async function vFerias(el) {
+  const ano = hoje().slice(0, 4);
+  const ferias = await store.list("ferias");
+  const resumo = PESSOAS.filter((p) => p !== "Ema").map((p) => {
+    const usados = ferias.filter((f) => f.quem === p && (f.tipo === "Férias" || f.tipo === "Folga / ponte") && String(f.inicio || "").startsWith(ano)).reduce((s, f) => s + diasUteis(f.inicio, f.fim), 0);
+    return `<div class="orc-l"><div class="orc-t"><span>${esc(p)}</span><span class="det"><b>${usados}</b> de ${DIAS_FERIAS} dias úteis marcados em ${ano}${usados <= DIAS_FERIAS ? ` · faltam ${DIAS_FERIAS - usados}` : ""}</span></div>
+      <div class="orc-b"><i class="${usados > DIAS_FERIAS ? "vermelho" : "verde"}" style="width:${Math.min(100, (usados / DIAS_FERIAS) * 100)}%"></i></div></div>`;
+  }).join("");
+  const prox = Object.entries(FERIADOS).filter(([d]) => diasAte(d) >= 0).slice(0, 8);
+  el.innerHTML = `${cab("Férias e aniversários", "Férias de cada um, feriados e os anos de quem gostamos.")}
+    <section class="seccao"><h2>Dias de férias em ${ano}</h2>${resumo}
+      <details><summary>Próximos feriados</summary>${prox.map(([d, n]) => { const w = deIso(d).toLocaleDateString("pt-PT", { weekday: "long" });
+        return `<div class="ing-prato"><span><b>${esc(n)}</b><br><span class="det">${fmtData(d)} · ${w}${/segunda|sexta/.test(w) ? " · fim de semana prolongado 🎉" : /terça|quinta/.test(w) ? " · dá para fazer ponte" : ""}</span></span><span class="tag">${rel(diasAte(d))}</span></div>`; }).join("")}</details>
+    </section>`;
+  await seccao(el, COLS.ferias);
+  await seccao(el, COLS.aniversarios);
+}
+
 async function vMedicos(el) {
   el.innerHTML = cab("Médicos", "Consultas, contactos e registos de saúde de cada pessoa.");
   await seccao(el, COLS.consultas);
@@ -1334,6 +1408,7 @@ const ICO = {
   familia: '<circle cx="9" cy="8" r="3"/><path d="M3.5 20c0-3.2 2.5-5.5 5.5-5.5s5.5 2.3 5.5 5.5"/><circle cx="17" cy="9.5" r="2.3"/><path d="M16.5 14.6c2.6.2 4.4 2.3 4.4 5.4"/>',
   medicos: '<path d="M12 20.5s-8-4.8-8-10.8A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.7c0 6-8 10.8-8 10.8z"/><path d="M8 12h2l1.2-2 1.6 4 1.2-2h2"/>',
   mover: '<path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/>',
+  ferias: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
   camara: '<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.5-2.5h5.6L16.3 7h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.8" r="3.3"/>',
   impressora: '<path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/>',
   estudo: '<path d="M4 19V5.5A2.5 2.5 0 0 1 6.5 3H20v14H6.5A2.5 2.5 0 0 0 4 19.5 2.5 2.5 0 0 0 6.5 22H20v-5"/><path d="M8.5 7.5h7M8.5 11h5"/>',
@@ -1353,7 +1428,7 @@ const ICO = {
   euro: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.8a4 4 0 1 0 0 6.4M7.5 11h6M7.5 13.5h6"/>',
   mais: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
 };
-const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["escola", "Escola Ema"], ["estudo", "Estudo"], ["viagens", "Viagens"], ["medicos", "Médicos"]];
+const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["escola", "Escola Ema"], ["estudo", "Estudo"], ["viagens", "Viagens"], ["ferias", "Férias e aniversários"], ["medicos", "Médicos"]];
 const svg = (k) => `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]}</svg>`;
 const NA_BARRA = ["inicio", "ementas", "compras", "despesas"];
 function montarMenus() {
@@ -1384,7 +1459,7 @@ function abrirMais() {
 /* =====================================================================
    NAVEGAÇÃO
    ===================================================================== */
-const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, estudo: vEstudo, viagens: vViagens, medicos: vMedicos };
+const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, estudo: vEstudo, viagens: vViagens, ferias: vFerias, medicos: vMedicos };
 let ROTA_ARGS = [];
 async function render() {
   if (!store) return;
