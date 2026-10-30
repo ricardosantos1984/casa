@@ -904,11 +904,94 @@ function blocoCalendario() {
 }
 
 async function vEscola(el) {
-  el.innerHTML = cab("Escola Ema", "Calendário, testes, trabalhos, reuniões, atividades e contactos da escola.") + blocoCalendario();
+  el.innerHTML = cab("Escola Ema", "Calendário, estudo, testes, trabalhos, reuniões, atividades e contactos da escola.") + `<a class="estudo-cta" href="#estudo"><span class="bolha">${svg("estudo")}</span><span class="ct"><b>Estudo · fichas do 5.º ano</b><span class="det">Português, Matemática, Ciências, HGP e Inglês</span></span><span class="seta">›</span></a>` + blocoCalendario();
   await seccao(el, COLS.escola_testes);
   await seccao(el, COLS.escola_eventos);
   await seccao(el, COLS.escola_atividades);
   await seccao(el, COLS.escola_contactos);
+}
+
+
+/* =====================================================================
+   ESTUDO — fichas do 5.º ano (conteúdo em fichas.js)
+   ===================================================================== */
+const DISC = () => window.FICHAS || [];
+const chaveEstudo = () => "estudo-" + (EU || "eu").toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g, "");
+const normTxt = (s) => String(s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[.,!?;:«»"'’]/g, "").replace(/\s+/g, " ").trim();
+const lerNum = (s) => { const v = String(s ?? "").replace(/\s/g, "").replace("%", "").replace(",", "."); return v === "" || isNaN(+v) ? null : +v; };
+function respostaCerta(q, v) {
+  if (q.t === "mc") return v !== null && v !== undefined && +v === q.c;
+  if (q.t === "num") { const n = lerNum(v); return n !== null && Math.abs(n - q.r) < 1e-6; }
+  const t = normTxt(v); return !!t && q.r.some((r) => normTxt(r) === t);
+}
+const textoCerto = (q) => (q.t === "mc" ? q.o[q.c] : q.t === "num" ? String(q.r).replace(".", ",") : q.r[0]);
+const msgNota = (c, t) => { const p = c / t; return p === 1 ? "Excelente! 🌟" : p >= 0.8 ? "Muito bem! 👏" : p >= 0.5 ? "Bom trabalho, continua! 💪" : "Vamos rever e tentar outra vez 🙂"; };
+const badge = (d, cls = "") => `<span class="sigla ${cls}" style="--c:${d.cor}">${esc(d.sigla)}</span>`;
+
+async function vEstudo(el) {
+  const [idD, idF] = ROTA_ARGS;
+  const prog = ((await store.getDoc(chaveEstudo())) || {}).res || {};
+  const disc = DISC().find((d) => d.id === idD);
+  const ficha = disc && disc.fichas.find((f) => f.id === idF);
+
+  if (!disc) {
+    const total = DISC().reduce((s, d) => s + d.fichas.length, 0), feitas = DISC().reduce((s, d) => s + d.fichas.filter((f) => prog[f.id]).length, 0);
+    el.innerHTML = `${cab("Estudo", `Fichas do 5.º ano · ${feitas} de ${total} feitas`)}
+      <div class="disc-grelha">${DISC().map((d) => { const n = d.fichas.filter((f) => prog[f.id]).length;
+        return `<a class="disc" href="#estudo/${d.id}">${badge(d)}<b>${esc(d.nome)}</b><span class="det">${n} de ${d.fichas.length} fichas feitas</span>
+          <span class="prog"><i style="width:${(n / d.fichas.length) * 100}%;background:${d.cor}"></i></span></a>`; }).join("")}</div>`;
+    return;
+  }
+  if (!ficha) {
+    el.innerHTML = `<a class="voltar" href="#estudo">‹ Estudo</a>
+      <div class="cab"><div style="display:flex;gap:14px;align-items:center">${badge(disc, "g")}<div><h1>${esc(disc.nome)}</h1><div class="sub2">5.º ano · ${disc.fichas.length} fichas</div></div></div></div>
+      <section class="seccao">${disc.fichas.map((f, i) => { const r = prog[f.id];
+        return `<a class="linha-l" href="#estudo/${disc.id}/${f.id}"><span class="num-f" style="--c:${disc.cor}">${i + 1}</span>
+          <span class="ct"><b>${esc(f.titulo)}</b><span class="det">${esc(f.sub)} · ${f.q.length} perguntas</span></span>
+          ${r ? `<span class="tag ${r.melhor === r.total ? "ok" : ""}">${r.melhor}/${r.total}</span>` : `<span class="tag">Fazer</span>`}</a>`; }).join("")}</section>`;
+    return;
+  }
+  const r = prog[ficha.id];
+  el.innerHTML = `<a class="voltar" href="#estudo/${disc.id}">‹ ${esc(disc.nome)}</a>
+    <div class="cab"><div style="display:flex;gap:14px;align-items:center">${badge(disc, "g")}<div><h1>${esc(ficha.titulo)}</h1><div class="sub2">${esc(ficha.sub)}${r ? ` · melhor nota ${r.melhor}/${r.total}` : ""}</div></div></div></div>
+    <form class="ficha" id="ficha" autocomplete="off">
+      ${ficha.q.map((q, i) => `<section class="perg" data-i="${i}"><div class="perg-n" style="--c:${disc.cor}">${i + 1}</div><div class="perg-c">
+        <p class="perg-p">${esc(q.p)}</p>
+        ${q.t === "mc" ? `<div class="opcoes">${q.o.map((o, j) => `<label class="opcao"><input type="radio" name="q${i}" value="${j}"><span>${esc(o)}</span></label>`).join("")}</div>`
+          : `<input name="q${i}" ${q.t === "num" ? 'inputmode="decimal"' : 'autocapitalize="off" spellcheck="false"'} placeholder="A tua resposta" aria-label="Resposta à pergunta ${i + 1}">`}
+        <div class="expl" hidden></div></div></section>`).join("")}
+      <div class="nota" id="nota" hidden></div>
+      <div class="acoes"><button type="submit" class="pri grande">Corrigir</button></div>
+    </form>`;
+  const f = $("#ficha", el);
+  f.onsubmit = async (e) => {
+    e.preventDefault();
+    if (f.dataset.feito) { render(); window.scrollTo(0, 0); return; }
+    let certas = 0;
+    ficha.q.forEach((q, i) => {
+      const box = $(`.perg[data-i="${i}"]`, f);
+      const v = q.t === "mc" ? (f.querySelector(`input[name=q${i}]:checked`) || {}).value : f.elements.namedItem("q" + i).value;
+      const ok = respostaCerta(q, v);
+      if (ok) certas++;
+      box.classList.add(ok ? "certa" : "errada");
+      if (q.t === "mc") $$(".opcao", box).forEach((l, j) => { if (j === q.c) l.classList.add("e-certa"); });
+      const ex = $(".expl", box); ex.hidden = false;
+      ex.innerHTML = ok ? `<b>✓ Certo!</b> ${esc(q.e)}` : `<b>✗ Resposta certa: ${esc(textoCerto(q))}</b><br>${esc(q.e)}`;
+      $$("input", box).forEach((x) => (x.disabled = true));
+    });
+    const t = ficha.q.length, nota = $("#nota", f);
+    nota.hidden = false;
+    nota.innerHTML = `<div class="nota-n">${certas}/${t}</div><div>${msgNota(certas, t)}</div>`;
+    f.dataset.feito = "1";
+    $("button[type=submit]", f).textContent = "Tentar outra vez";
+    nota.scrollIntoView({ behavior: "smooth", block: "center" });
+    try {
+      const doc = (await store.getDoc(chaveEstudo())) || { res: {} };
+      const ant = (doc.res || {})[ficha.id];
+      doc.res = { ...(doc.res || {}), [ficha.id]: { certas, total: t, melhor: Math.max(certas, ant ? ant.melhor : 0), vezes: (ant ? ant.vezes : 0) + 1, data: hoje() } };
+      await store.setDoc(chaveEstudo(), doc);
+    } catch (err) { erro(err); }
+  };
 }
 
 async function vViagens(el) {
@@ -938,6 +1021,7 @@ const ICO = {
   medicos: '<path d="M12 20.5s-8-4.8-8-10.8A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.7c0 6-8 10.8-8 10.8z"/><path d="M8 12h2l1.2-2 1.6 4 1.2-2h2"/>',
   mover: '<path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/>',
   camara: '<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.5-2.5h5.6L16.3 7h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.8" r="3.3"/>',
+  estudo: '<path d="M4 19V5.5A2.5 2.5 0 0 1 6.5 3H20v14H6.5A2.5 2.5 0 0 0 4 19.5 2.5 2.5 0 0 0 6.5 22H20v-5"/><path d="M8.5 7.5h7M8.5 11h5"/>',
   viagens: '<rect x="3.5" y="7" width="17" height="13" rx="2.5"/><path d="M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2M8 7v13M16 7v13"/>',
   calendario: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   doc: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
@@ -954,7 +1038,7 @@ const ICO = {
   euro: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.8a4 4 0 1 0 0 6.4M7.5 11h6M7.5 13.5h6"/>',
   mais: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
 };
-const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["escola", "Escola Ema"], ["viagens", "Viagens"], ["medicos", "Médicos"]];
+const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["escola", "Escola Ema"], ["estudo", "Estudo"], ["viagens", "Viagens"], ["medicos", "Médicos"]];
 const svg = (k) => `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]}</svg>`;
 const NA_BARRA = ["inicio", "ementas", "compras", "despesas"];
 function montarMenus() {
@@ -983,10 +1067,12 @@ function abrirMais() {
 /* =====================================================================
    NAVEGAÇÃO
    ===================================================================== */
-const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, viagens: vViagens, medicos: vMedicos };
+const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, estudo: vEstudo, viagens: vViagens, medicos: vMedicos };
+let ROTA_ARGS = [];
 async function render() {
   if (!store) return;
-  const h = location.hash.slice(1), rota = ROTAS[h] ? h : "inicio";
+  const partes = decodeURIComponent(location.hash.slice(1)).split("/"), h = partes[0], rota = ROTAS[h] ? h : "inicio";
+  ROTA_ARGS = partes.slice(1);
   const naBarra = NA_BARRA.includes(rota);
   $$("#tabbar [data-r]").forEach((a) => a.classList.toggle("ativo", a.dataset.r === rota || (a.dataset.r === "mais" && !naBarra)));
   $$("#nav a").forEach((a) => { const on = a.dataset.r === rota; a.classList.toggle("ativo", on); if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });

@@ -153,6 +153,38 @@ a.mini:hover{background:var(--hover)}
 .cal-l.passou{opacity:.45}
 .cal-l.prox{background:var(--acento-f);border-radius:var(--raio);padding:8px 10px;margin:2px -10px;border-top-color:transparent}
 
+/* ---------- estudo ---------- */
+.estudo-cta{display:flex;align-items:center;gap:12px;padding:14px;border-radius:var(--raio-g);background:linear-gradient(135deg,rgba(76,155,255,.22),var(--painel));text-decoration:none;color:inherit;border:1px solid var(--linha)}
+.voltar{align-self:flex-start;text-decoration:none;font-weight:700;padding:6px 0;font-size:16px}
+.disc-grelha{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.disc{display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:var(--raio-g);background:var(--painel);text-decoration:none;color:inherit}
+.disc:hover{background:var(--hover)}
+.disc b{font-size:17px;line-height:1.25}
+.sigla{display:grid;place-content:center;width:46px;height:46px;border-radius:14px;background:color-mix(in srgb,var(--c) 22%,transparent);color:var(--c);font-weight:800;font-size:15px;margin-bottom:4px}
+.sigla.g{width:56px;height:56px;font-size:17px;margin:0}
+.prog{height:6px;border-radius:4px;background:var(--linha);overflow:hidden;margin-top:4px}
+.prog i{display:block;height:100%;border-radius:4px}
+.num-f{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-content:center;font-weight:800;background:color-mix(in srgb,var(--c) 22%,transparent);color:var(--c)}
+.tag.ok{background:rgba(76,208,138,.18);color:#4CD08A}
+.ficha{display:flex;flex-direction:column;gap:10px}
+.perg{display:flex;gap:12px;background:var(--painel);border-radius:var(--raio-g);padding:14px;border:2px solid transparent}
+.perg.certa{border-color:#4CD08A}
+.perg.errada{border-color:var(--vermelho)}
+.perg-n{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-content:center;font-weight:800;font-size:15px;background:color-mix(in srgb,var(--c) 22%,transparent);color:var(--c)}
+.perg-c{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px}
+.perg-p{margin:4px 0 0;font-weight:600;font-size:17px}
+.opcoes{display:flex;flex-direction:column;gap:6px}
+.opcao{display:flex;align-items:center;gap:12px;min-height:50px;padding:6px 14px;border-radius:var(--raio);background:var(--painel2);border:1.5px solid var(--linha);cursor:pointer;font-size:16px}
+.opcao input{width:22px;height:22px;min-height:0;flex:none;accent-color:var(--acento);-webkit-appearance:auto;appearance:auto;margin:0}
+.opcao:has(input:checked){border-color:var(--acento);background:var(--acento-f)}
+.perg.errada .opcao:has(input:checked){border-color:var(--vermelho);background:var(--vermelho-f)}
+.opcao.e-certa{border-color:#4CD08A !important;background:rgba(76,208,138,.14) !important}
+.expl{font-size:15px;line-height:1.4;padding:10px 12px;border-radius:var(--raio);background:var(--painel2)}
+.perg.certa .expl b{color:#4CD08A}
+.perg.errada .expl b{color:var(--vermelho)}
+.nota{text-align:center;padding:18px;border-radius:var(--raio-g);background:var(--acento-f);font-size:18px;font-weight:700}
+.nota-n{font-size:44px;font-weight:800;color:var(--acento);line-height:1.1}
+
 /* ---------- despesas ---------- */
 .resumo{display:flex;flex-direction:column;gap:8px;padding:14px;background:var(--painel2);border-radius:var(--raio)}
 .total{font-size:26px;font-weight:800;letter-spacing:-.02em}
