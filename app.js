@@ -87,8 +87,10 @@ const REPETIR = { "Não repete": 0, "Mensal": 1, "Trimestral": 3, "Semestral": 6
 const PERIODO = { "Mensal": 1, "Bimestral": 2, "Trimestral": 3, "Semestral": 6, "Anual": 12 };
 const junta = (...p) => p.filter(Boolean).map(esc).join(" · ");
 
+const CAT_ICO = { "Supermercado": "compras", "Casa": "inicio", "Contas (luz, água, gás, net)": "raio", "Carro": "veiculos", "Combustível": "combustivel", "Saúde": "medicos", "Escola": "escola", "Roupa": "roupa", "Lazer": "lazer", "Restaurantes": "ementas", "Presentes": "presente" };
 const COLS = {
   compras: {
+    ico: "compras",
     id: "compras", nome: "Compras", item: "artigo",
     campos: [
       { k: "nome", l: "Artigo", t: "text", req: 1 },
@@ -99,6 +101,7 @@ const COLS = {
     titulo: (d) => d.nome,
   },
   despesas: {
+    ico: (d) => CAT_ICO[d.cat] || "euro",
     id: "despesas", nome: "Despesas do mês", item: "despesa",
     campos: [
       { k: "data", l: "Data", t: "date", req: 1, def: hoje },
@@ -115,6 +118,7 @@ const COLS = {
     vazio: "Sem despesas neste mês.",
   },
   veiculos: {
+    ico: "veiculos",
     id: "veiculos", nome: "Veículos", item: "veículo",
     campos: [
       { k: "nome", l: "Nome (ex: Carro do Ricardo)", t: "text", req: 1 },
@@ -136,6 +140,7 @@ const COLS = {
     vazio: "Ainda não há veículos. Adiciona o primeiro.",
   },
   manutencoes: {
+    ico: "casa",
     id: "manutencoes", nome: "Manutenções e reparações", item: "manutenção",
     campos: [
       { k: "veiculo", l: "Veículo", t: "select", o: async () => (await store.list("veiculos")).map((v) => v.nome) },
@@ -151,6 +156,7 @@ const COLS = {
     ordem: (a, b) => String(b.data).localeCompare(String(a.data)),
   },
   contas: {
+    ico: "raio",
     id: "contas", nome: "Contas fixas", item: "conta",
     campos: [
       { k: "nome", l: "Conta (ex: Luz, Internet)", t: "text", req: 1 },
@@ -166,6 +172,7 @@ const COLS = {
     ordem: (a, b) => String(a.nome).localeCompare(String(b.nome)),
   },
   tarefas: {
+    ico: "casa",
     id: "tarefas", nome: "Manutenção da casa", item: "tarefa",
     campos: [
       { k: "desc", l: "Tarefa (ex: limpar filtros do ar condicionado)", t: "text", req: 1 },
@@ -190,6 +197,7 @@ const COLS = {
     },
   },
   garantias: {
+    ico: "escudo",
     id: "garantias", nome: "Garantias e eletrodomésticos", item: "garantia",
     campos: [
       { k: "aparelho", l: "Aparelho", t: "text", req: 1 },
@@ -204,6 +212,7 @@ const COLS = {
     ordem: (a, b) => String(b.fim || "").localeCompare(String(a.fim || "")),
   },
   datas: {
+    ico: (d) => (/anivers/i.test(d.desc || "") ? "bolo" : "calendario"),
     id: "datas", nome: "Datas importantes", item: "data",
     campos: [
       { k: "desc", l: "O quê (ex: Aniversário da Ema, reunião da escola)", t: "text", req: 1 },
@@ -218,6 +227,7 @@ const COLS = {
     ordem: (a, b) => { const f = (d) => (d.data ? (d.anual ? proximaAnual(d.data) : d.data) : "9"); return f(a).localeCompare(f(b)); },
   },
   documentos: {
+    ico: "doc",
     id: "documentos", nome: "Validade de documentos", item: "documento",
     campos: [
       { k: "pessoa", l: "Pessoa", t: "select", o: () => PESSOAS, req: 1 },
@@ -231,6 +241,7 @@ const COLS = {
     ordem: (a, b) => String(a.validade || "9").localeCompare(String(b.validade || "9")),
   },
   consultas: {
+    ico: "medicos",
     id: "consultas", nome: "Consultas", item: "consulta",
     campos: [
       { k: "pessoa", l: "Pessoa", t: "select", o: () => PESSOAS, req: 1 },
@@ -248,6 +259,7 @@ const COLS = {
     vazio: "Sem consultas marcadas.",
   },
   contactos: {
+    ico: "tel",
     id: "contactos", nome: "Médicos e contactos", item: "contacto",
     campos: [
       { k: "nome", l: "Nome", t: "text", req: 1 },
@@ -262,6 +274,7 @@ const COLS = {
     ordem: (a, b) => String(a.nome).localeCompare(String(b.nome)),
   },
   saude: {
+    ico: "pilula",
     id: "saude", nome: "Vacinas, análises e medicação", item: "registo",
     campos: [
       { k: "pessoa", l: "Pessoa", t: "select", o: () => PESSOAS, req: 1 },
@@ -282,7 +295,9 @@ const COLS = {
 function cartao(col, it) {
   const al = col.alertas ? col.alertas(it) : [];
   const nv = ["vermelho", "laranja", "amarelo", "azul"].find((n) => al.some((a) => a.nivel === n)) || "";
+  const ico = typeof col.ico === "function" ? col.ico(it) : col.ico;
   return `<div class="cartao ${nv}" data-id="${esc(it.id)}" tabindex="0" role="button" aria-label="Editar ${esc(col.titulo(it))}">
+    ${ico ? `<span class="bolha ${nv}">${svg(ico)}</span>` : ""}
     <div class="ct"><div class="tit">${esc(col.titulo(it))}</div>${col.detalhe ? `<div class="det">${col.detalhe(it)}</div>` : ""}
     ${al.map((a) => `<span class="al ${a.nivel}">${esc(a.texto)}</span>`).join("")}</div>
     ${col.valor ? `<div class="val">${esc(col.valor(it))}</div>` : ""}
@@ -394,23 +409,40 @@ async function vInicio(el) {
   const [docE, compras, despesas, ...listas] = await Promise.all([store.getDoc("ementa-" + ini), store.list("compras"), store.list("despesas"), ...ids.map((i) => store.list(i))]);
   const sel = (docE && docE.sel) || {};
   const alertas = [];
-  ids.forEach((cid, n) => listas[n].forEach((it) => (COLS[cid].alertas(it) || []).forEach((a) => alertas.push({ ...a, rota: ROTA_DE[cid], tit: COLS[cid].titulo(it) }))));
+  ids.forEach((cid, n) => { if (cid === "consultas") return; listas[n].forEach((it) => (COLS[cid].alertas(it) || []).forEach((a) => alertas.push({ ...a, rota: ROTA_DE[cid], tit: COLS[cid].titulo(it), ico: typeof COLS[cid].ico === "function" ? COLS[cid].ico(it) : COLS[cid].ico }))); });
   alertas.sort((a, b) => a.dias - b.dias);
-  const porComprar = compras.filter((c) => !c.comprado).length;
-  const mes = hoje().slice(0, 7);
-  const totMes = despesas.filter((d) => (d.data || "").startsWith(mes)).reduce((s, d) => s + (+d.valor || 0), 0);
+  const consultas = listas[ids.indexOf("consultas")].filter((c) => c.data && diasAte(c.data) >= 0 && diasAte(c.data) <= 60)
+    .sort((a, b) => String(a.data + (a.hora || "")).localeCompare(String(b.data + (b.hora || "")))).slice(0, 4);
+  const falta = compras.filter((c) => !c.comprado);
+  const mes = hoje().slice(0, 7), segunda = somaDias(hoje(), -((new Date().getDay() + 6) % 7));
+  const soma = (f) => despesas.filter(f).reduce((s, d) => s + (+d.valor || 0), 0);
+  const totMes = soma((d) => String(d.data || "").startsWith(mes)), totSem = soma((d) => d.data && d.data >= segunda && d.data <= hoje());
   const dataLonga = new Date().toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" });
-  const ref = (k) => sel[idx + k] ? esc(sel[idx + k]) + (sel[idx + k + "S"] ? " <small>(+ salada)</small>" : "") : `<span class="vazio">por escolher</span>`;
+
+  const v = (k) => sel[idx + k];
+  const pv = (t) => (t ? esc(t) : `<span class="vazio">—</span>`);
+  const pessoas = (ix) => { const l = WHO.filter((w) => v(w[ix])); return l.length ? l.map((w) => `<span class="quem">${w[0]}</span> ${esc(v(w[ix]))}`).join("<br>") : `<span class="vazio">—</span>`; };
+  const refeicao = (lbl, html, sal) => `<div class="ref-linha"><span class="ref-l">${lbl}</span><span class="ref-t">${html}${sal ? ` <span class="tag">+ salada</span>` : ""}</span></div>`;
+  const nada = !Object.keys(sel).some((k) => k.startsWith(String(idx)) && sel[k]);
+
   el.innerHTML = `${cab(EU ? "Olá, " + esc(EU) : "Olá!", cap(dataLonga))}
+  <a class="hoje" href="#ementas">
+    <div class="hoje-cab"><span class="bolha">${svg("ementas")}</span><h2>Hoje na ementa</h2><span class="seta">›</span></div>
+    ${nada ? `<p class="vazio">Ainda não há nada escolhido para hoje. Toca para escolher.</p>` :
+      refeicao("Pequeno-almoço", pv(v("P"))) + refeicao("Meio da manhã", pessoas(1)) + refeicao("Almoço", pv(v("A")), v("AS")) + refeicao("Meio da tarde", pessoas(2)) + refeicao("Jantar", pv(v("J")), v("JS"))}
+  </a>
   <div class="grelha">
-    <a class="mini" href="#ementas"><span class="rot">Hoje na ementa</span>
-      <div><b>Almoço:</b> ${ref("A")}</div><div><b>Jantar:</b> ${ref("J")}</div></a>
-    <a class="mini" href="#compras"><span class="rot">Lista de compras</span><span class="num">${porComprar}</span><span>${porComprar === 1 ? "artigo" : "artigos"} por comprar</span></a>
-    <a class="mini" href="#despesas"><span class="rot">Despesas este mês</span><span class="num">${euro(totMes)}</span></a>
+    <a class="mini" href="#compras"><span class="bolha">${svg("compras")}</span><span class="num">${falta.length}</span><span class="rot">por comprar</span></a>
+    <a class="mini" href="#despesas"><span class="bolha">${svg("euro")}</span><span class="num">${euro(totSem)}</span><span class="rot">gasto esta semana</span></a>
+    <a class="mini" href="#despesas"><span class="bolha">${svg("calendario")}</span><span class="num">${euro(totMes)}</span><span class="rot">gasto este mês</span></a>
   </div>
-  <section class="seccao"><h2>Avisos e próximos dias</h2>
-    <div>${alertas.length ? alertas.map((a) => `<a class="alerta-linha" href="#${a.rota}"><span class="ponto ${a.nivel}"></span><span><b>${esc(a.tit)}</b><br><span class="det">${esc(a.texto)}</span></span></a>`).join("") : `<p class="vazio">Nada urgente. 👍</p>`}</div>
-  </section>`;
+  <section class="seccao"><div class="sec-cab"><h2>Próximas consultas</h2><a class="ver" href="#medicos">Ver todas</a></div>
+    ${consultas.length ? consultas.map((c) => { const n = diasAte(c.data); return `<a class="linha-l" href="#medicos"><span class="bolha ${n <= 1 ? "laranja" : "azul"}">${svg("medicos")}</span><span class="ct"><b>${esc(c.pessoa)} — ${esc(c.esp || "consulta")}</b><span class="det">${esc(fmtData(c.data))}${c.hora ? " às " + esc(c.hora) : ""}${c.local ? " · " + esc(c.local) : ""}</span></span><span class="tag ${n <= 1 ? "laranja" : ""}">${esc(rel(n))}</span></a>`; }).join("") : `<p class="vazio">Sem consultas nos próximos 60 dias.</p>`}
+  </section>
+  <section class="seccao"><h2>Avisos</h2>
+    ${alertas.length ? alertas.map((a) => `<a class="linha-l" href="#${a.rota}"><span class="bolha ${a.nivel}">${svg(a.ico || "calendario")}</span><span class="ct"><b>${esc(a.tit)}</b><span class="det">${esc(a.texto)}</span></span></a>`).join("") : `<p class="vazio">Nada urgente. 👍</p>`}
+  </section>
+  ${falta.length ? `<section class="seccao"><div class="sec-cab"><h2>Lista de compras</h2><a class="ver" href="#compras">Abrir</a></div><p class="chips">${falta.slice(0, 12).map((c) => `<span class="chip">${esc(c.nome)}</span>`).join("")}${falta.length > 12 ? `<span class="chip">+${falta.length - 12}</span>` : ""}</p></section>` : ""}`;
 }
 
 /* =====================================================================
@@ -630,6 +662,19 @@ const ICO = {
   casa: '<path d="M14.5 5.5a4 4 0 0 0 5 5l-8.8 8.8a2.1 2.1 0 0 1-3-3l8.8-8.8z"/><path d="M14.5 5.5l2-2 4 4-2 2"/>',
   familia: '<circle cx="9" cy="8" r="3"/><path d="M3.5 20c0-3.2 2.5-5.5 5.5-5.5s5.5 2.3 5.5 5.5"/><circle cx="17" cy="9.5" r="2.3"/><path d="M16.5 14.6c2.6.2 4.4 2.3 4.4 5.4"/>',
   medicos: '<path d="M12 20.5s-8-4.8-8-10.8A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.7c0 6-8 10.8-8 10.8z"/><path d="M8 12h2l1.2-2 1.6 4 1.2-2h2"/>',
+  calendario: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  doc: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
+  tel: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+  pilula: '<rect x="2.5" y="8.5" width="19" height="7" rx="3.5" transform="rotate(-45 12 12)"/><path d="M9.5 9.5l5 5"/>',
+  escudo: '<path d="M12 3l7.5 3v6c0 4.5-3.2 7.8-7.5 9-4.3-1.2-7.5-4.5-7.5-9V6z"/><path d="M9 12l2 2 4-4"/>',
+  raio: '<path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/>',
+  bolo: '<path d="M4 20h16v-6.5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2z"/><path d="M4 15.5c2.5 1.5 5 1.5 8 0s5.5-1.5 8 0M12 11.5V8"/><path d="M12 3.5c1 1 1 2.3 0 3-1-.7-1-2 0-3z"/>',
+  combustivel: '<path d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M4 21h12M5 10h10"/><path d="M15 8l3 2v8a1.5 1.5 0 0 0 3 0v-7l-2-3"/>',
+  presente: '<rect x="3.5" y="8" width="17" height="4" rx="1"/><path d="M5 12v8.5h14V12M12 8v12.5M12 8C10 4 6.5 4.5 7.5 7c.5 1 4.5 1 4.5 1s4-0 4.5-1c1-2.5-2.5-3-4.5 1z"/>',
+  escola: '<path d="M2.5 9L12 4.5 21.5 9 12 13.5z"/><path d="M6.5 11v5c3 2.5 8 2.5 11 0v-5M21.5 9v5"/>',
+  roupa: '<path d="M8 3.5L3.5 6.5l2 4 2-1V20.5h9V9.5l2 1 2-4L16 3.5c-.5 1.7-2 2.7-4 2.7s-3.5-1-4-2.7z"/>',
+  lazer: '<circle cx="12" cy="12" r="8.5"/><path d="M9.5 9h.01M14.5 9h.01M8.5 13.5c2 2.5 5 2.5 7 0"/>',
+  euro: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.8a4 4 0 1 0 0 6.4M7.5 11h6M7.5 13.5h6"/>',
   mais: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
 };
 const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["medicos", "Médicos"]];
