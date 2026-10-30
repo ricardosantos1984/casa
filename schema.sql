@@ -98,3 +98,6 @@ drop policy if exists "membros alteram anexos" on storage.objects;
 create policy "membros alteram anexos" on storage.objects for update to authenticated using (bucket_id = 'anexos' and public.e_membro());
 drop policy if exists "membros apagam anexos" on storage.objects;
 create policy "membros apagam anexos" on storage.objects for delete to authenticated using (bucket_id = 'anexos' and public.e_membro());
+
+-- 7) Atualização automática entre aparelhos (Realtime)
+alter publication supabase_realtime add table public.itens, public.documentos;

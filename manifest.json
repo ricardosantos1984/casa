@@ -1,0 +1,22 @@
+{
+  "name": "A Nossa Casa",
+  "short_name": "Casa",
+  "description": "Ementas, compras, despesas, escola, viagens e tudo da casa da família Santos.",
+  "lang": "pt-PT",
+  "start_url": "./#inicio",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0E1626",
+  "theme_color": "#0E1626",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Lista de compras", "url": "./#compras" },
+    { "name": "Ementa", "url": "./#ementas" },
+    { "name": "Nova despesa", "url": "./#despesas" }
+  ]
+}

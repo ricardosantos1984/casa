@@ -70,26 +70,30 @@ function storeLocal() {
     },
     async listDocs() { return Object.entries(ler().docs || {}).map(([id, dados]) => ({ id, dados })); },
     async removeDoc(id) { const x = ler(); delete x.docs[id]; gravar(x); },
+    async upsertItem(id, modulo, d) { const x = ler(); const i = x.itens.find((y) => y.id === id); if (i) { i.dados = d; i.modulo = modulo; } else x.itens.push({ id, modulo, dados: d }); gravar(x); },
     async urls(caminhos) { const x = ler().ficheiros || {}; return Object.fromEntries(caminhos.map((c) => [c, x[c] || ""])); },
     async apagarFicheiros(caminhos) { const x = ler(); caminhos.forEach((c) => { if (x.ficheiros) delete x.ficheiros[c]; }); gravar(x); },
   };
 }
+let ultimaEscrita = 0;
+const marcarEscrita = () => { ultimaEscrita = Date.now(); };
 function storeSupabase() {
   const ok = (r) => { if (r.error) throw r.error; return r.data; };
   return {
     modo: "online",
     async list(m) { return ok(await sb.from("itens").select("id,dados").eq("modulo", m)).map((r) => ({ ...r.dados, id: r.id })); },
-    async add(m, d) { return ok(await sb.from("itens").insert({ modulo: m, dados: d }).select("id").single()).id; },
-    async update(id, d) { ok(await sb.from("itens").update({ dados: d }).eq("id", id)); },
-    async remove(id) { ok(await sb.from("itens").delete().eq("id", id)); },
+    async add(m, d) { marcarEscrita(); return ok(await sb.from("itens").insert({ modulo: m, dados: d }).select("id").single()).id; },
+    async update(id, d) { marcarEscrita(); ok(await sb.from("itens").update({ dados: d }).eq("id", id)); },
+    async remove(id) { marcarEscrita(); ok(await sb.from("itens").delete().eq("id", id)); },
     async getDoc(id) { const r = ok(await sb.from("documentos").select("dados").eq("id", id).maybeSingle()); return r ? r.dados : null; },
-    async setDoc(id, d) { ok(await sb.from("documentos").upsert({ id, dados: d })); },
+    async setDoc(id, d) { marcarEscrita(); ok(await sb.from("documentos").upsert({ id, dados: d })); },
     async upload(caminho, file) {
       const r = await sb.storage.from("anexos").upload(caminho, file, { contentType: file.type || "application/octet-stream", upsert: false });
       if (r.error) throw new Error(/bucket not found/i.test(r.error.message) ? "Falta criar o espaço de ficheiros no Supabase (ver instruções)" : r.error.message);
     },
     async listDocs() { return ok(await sb.from("documentos").select("id,dados").not("id", "like", "foto-%")); },
-    async removeDoc(id) { ok(await sb.from("documentos").delete().eq("id", id)); },
+    async upsertItem(id, modulo, d) { marcarEscrita(); ok(await sb.from("itens").upsert({ id, modulo, dados: d })); },
+    async removeDoc(id) { marcarEscrita(); ok(await sb.from("documentos").delete().eq("id", id)); },
     async urls(caminhos) {
       if (!caminhos.length) return {};
       const r = await sb.storage.from("anexos").createSignedUrls(caminhos, 3600);
@@ -134,7 +138,7 @@ const COLS = {
       { k: "notas", l: "Notas", t: "textarea" },
     ],
     titulo: (d) => d.desc || d.cat,
-    detalhe: (d) => junta(fmtData(d.data), d.cat, d.quem),
+    detalhe: (d) => junta(fmtData(d.data), d.cat, d.quem, d.auto ? "🔁 conta fixa" : ""),
     valor: (d) => euro(d.valor),
     ordem: (a, b) => String(b.data).localeCompare(String(a.data)),
     vazio: "Sem despesas neste mês.",
@@ -186,10 +190,13 @@ const COLS = {
       { k: "periodo", l: "Periodicidade", t: "select", o: Object.keys(PERIODO), def: "Mensal" },
       { k: "dia", l: "Dia de pagamento", t: "number" },
       { k: "debito", l: "Débito direto", t: "check" },
+      { k: "lancar", l: "Lançar sozinha nas despesas quando chega o dia", t: "check", def: true },
+      { k: "inicio", l: "Mês do primeiro pagamento (para bimestrais, trimestrais, anuais…)", t: "month", def: () => hoje().slice(0, 7) },
+      { k: "quem", l: "Quem paga", t: "select", o: () => PESSOAS },
       { k: "notas", l: "Notas (fornecedor, contrato…)", t: "textarea" },
     ],
     titulo: (d) => d.nome,
-    detalhe: (d) => junta(d.periodo, d.dia ? "dia " + d.dia : "", d.debito ? "débito direto" : ""),
+    detalhe: (d) => junta(d.periodo, d.dia ? "dia " + d.dia : "", d.debito ? "débito direto" : "", d.lancar !== false && d.valor ? "lança-se sozinha 🔁" : ""),
     valor: (d) => (d.valor ? euro(d.valor) : ""),
     ordem: (a, b) => String(a.nome).localeCompare(String(b.nome)),
   },
@@ -844,7 +851,18 @@ function desenharEmenta(el) {
     <div><button class="pri" id="importar">Importar</button></div>
   </details>`;
 
-  const gravarSel = async () => { try { await store.setDoc("ementa-" + E.ini, { sel: E.sel }); aviso("Gravado"); } catch (e) { erro(e); } };
+  // grava só as escolhas que mudaram, por cima do que está guardado (não apaga o que outra pessoa mudou entretanto)
+  const gravarSel = async (chaves) => {
+    try {
+      marcarEscrita();
+      if (chaves) {
+        const atual = ((await store.getDoc("ementa-" + E.ini)) || {}).sel || {};
+        chaves.forEach((k) => { atual[k] = E.sel[k]; });
+        E.sel = atual;
+      }
+      await store.setDoc("ementa-" + E.ini, { sel: E.sel }); aviso("Gravado");
+    } catch (e) { erro(e); }
+  };
   const mudarSemana = async (ini) => {
     E.ini = sabadoDe(ini);
     try { await store.setDoc("ementa-atual", { inicio: E.ini }); } catch (e) {}
@@ -855,18 +873,22 @@ function desenharEmenta(el) {
     if (!t) return inp.focus();
     const lk = LKM[k], l = E.ideias[lk] || [];
     if (!O[lk].includes(t) && !l.includes(t)) {
-      E.ideias = { ...E.ideias, [lk]: [...l, t] };
-      try { await store.setDoc("ementa-ideias", { ideias: E.ideias }); } catch (e) { erro(e); }
+      try {
+        const atual = ((await store.getDoc("ementa-ideias")) || {}).ideias || {};
+        atual[lk] = [...new Set([...(atual[lk] || []), ...l, t])];
+        E.ideias = atual; marcarEscrita();
+        await store.setDoc("ementa-ideias", { ideias: E.ideias });
+      } catch (e) { erro(e); }
     }
     E.sel[E.dia + k] = t;
-    await gravarSel();
+    await gravarSel([E.dia + k]);
     desenharEmenta(el);
   };
 
   el.onchange = (e) => {
     const t = e.target;
-    if (t.dataset.k) { E.sel[E.dia + t.dataset.k] = t.value; gravarSel(); desenharEmenta(el); }
-    else if (t.dataset.sal) { E.sel[E.dia + t.dataset.sal + "S"] = t.checked ? "1" : ""; gravarSel(); }
+    if (t.dataset.k) { const k = E.dia + t.dataset.k; E.sel[k] = t.value; gravarSel([k]).then(() => desenharEmenta(el)); desenharEmenta(el); }
+    else if (t.dataset.sal) { const k = E.dia + t.dataset.sal + "S"; E.sel[k] = t.checked ? "1" : ""; gravarSel([k]); }
     else if (t.id === "ini" && t.value) mudarSemana(t.value);
   };
   el.onclick = async (e) => {
@@ -1066,6 +1088,33 @@ const DIAS_FERIAS = 22;
 /* =====================================================================
    DESPESAS, VEÍCULOS, CASA, FAMÍLIA, MÉDICOS
    ===================================================================== */
+
+/* ---------- contas fixas lançadas automaticamente nas despesas ---------- */
+const contaDevida = (c, mes) => {
+  const p = PERIODO[c.periodo] || 1, ini = c.inicio;
+  if (!ini) return p === 1;
+  const dif = (+mes.slice(0, 4) - +ini.slice(0, 4)) * 12 + (+mes.slice(5, 7) - +ini.slice(5, 7));
+  return dif >= 0 && dif % p === 0;
+};
+async function lancarContas() {
+  const contas = (await store.list("contas")).filter((c) => c.lancar !== false && +c.valor > 0);
+  if (!contas.length) return;
+  const mes = hoje().slice(0, 7);
+  const desp = await store.list("despesas");
+  const ja = new Set(desp.filter((d) => d.conta_id).map((d) => d.conta_id + "|" + String(d.data || "").slice(0, 7)));
+  let n = 0;
+  for (const c of contas) {
+    if (!contaDevida(c, mes)) continue;
+    const ultimoDia = new Date(+mes.slice(0, 4), +mes.slice(5, 7), 0).getDate();
+    const dia = Math.min(Math.max(1, +c.dia || 1), ultimoDia);
+    const data = `${mes}-${pad(dia)}`;
+    if (data > hoje() || ja.has(c.id + "|" + mes)) continue;
+    await store.add("despesas", { data, desc: c.nome, cat: "Contas (luz, água, gás, net)", valor: +c.valor, quem: c.quem || "", notas: "Lançada automaticamente a partir das contas fixas", conta_id: c.id, auto: true });
+    n++;
+  }
+  if (n) { aviso(`${n} ${n === 1 ? "conta fixa lançada" : "contas fixas lançadas"} nas despesas`); render(); }
+}
+
 let mesDesp = hoje().slice(0, 7);
 const mesSeguinte = (m) => somaMeses(m + "-01", 1).slice(0, 7);
 const nomeDoMes = (m) => cap(deIso(m + "-01").toLocaleDateString("pt-PT", { month: "long", year: "numeric" }));
@@ -1525,8 +1574,11 @@ async function vDados(el) {
       <p class="det" style="margin:0">${semanas.length} ${semanas.length === 1 ? "semana guardada" : "semanas guardadas"}${semanas.length ? ` (desde ${fmtData(semanas[0].id.slice(7))})` : ""}.</p>
       ${semanas.length ? `<div class="acoes"><label class="mes">Apagar semanas anteriores a <input type="date" id="em-data" value="${somaDias(hoje(), -90)}"></label><button type="button" class="perigo peq" id="em-apagar">Apagar</button></div>` : ""}
     </section>
-    <section class="seccao"><h2>💾 Antes de apagar</h2><p class="det" style="margin:0">Faz uma cópia de segurança, para o caso de te arrependeres.</p><div><button type="button" class="sec" id="dados-copia">💾 Cópia de segurança (Excel)</button></div></section>`;
+    <section class="seccao"><h2>💾 Cópias de segurança</h2><p class="det" style="margin:0">Antes de apagar muita coisa, faz uma cópia. Descarrega um Excel (para ler) e um ficheiro .json (para restaurar).</p>
+      <div class="acoes"><button type="button" class="sec" id="dados-copia">💾 Fazer cópia</button>
+      <label class="sec peq anx-add" style="min-height:48px;font-size:16px">♻️ Restaurar a partir de uma cópia (.json)<input type="file" accept=".json,application/json" id="dados-restaurar" hidden></label></div></section>`;
   $("#dados-copia", el).onclick = exportarExcel;
+  $("#dados-restaurar", el).onchange = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) restaurarCopia(f); };
   const lista = anexos.sort((a, b) => (b.tamanho || 0) - (a.tamanho || 0));
   el.onclick = async (e) => {
     const b = e.target.closest("button"); if (!b) return;
@@ -1564,6 +1616,31 @@ async function vDados(el) {
     } catch (err) { erro(err); }
   };
 }
+
+async function restaurarCopia(file) {
+  let dados;
+  try { dados = JSON.parse(await file.text()); } catch (e) { return aviso("Este ficheiro não é uma cópia válida"); }
+  if (!dados || !dados.itens || !dados.documentos) return aviso("Este ficheiro não é uma cópia de A Nossa Casa");
+  const nItens = Object.values(dados.itens).reduce((s, l) => s + l.length, 0);
+  const modo = prompt(`Cópia de ${dados.data ? fmtData(dados.data) : "data desconhecida"} com ${nItens} registos.\n\nEscreve:\n  JUNTAR — repõe o que está na cópia sem apagar o que foi feito depois\n  SUBSTITUIR — a app fica exatamente igual à cópia (apaga o que não está lá)`, "JUNTAR");
+  const m = (modo || "").trim().toUpperCase();
+  if (m !== "JUNTAR" && m !== "SUBSTITUIR") return aviso("Nada foi alterado");
+  aviso("A restaurar…");
+  try {
+    let feitos = 0;
+    for (const [modulo, lista] of Object.entries(dados.itens)) {
+      if (!COLS[modulo]) continue;
+      if (m === "SUBSTITUIR") {
+        const ids = new Set(lista.map((i) => i.id));
+        for (const atual of await store.list(modulo)) if (!ids.has(atual.id)) await store.remove(atual.id);
+      }
+      for (const it of lista) { await store.upsertItem(it.id, modulo, semId(it)); feitos++; }
+    }
+    for (const d of dados.documentos) if (d.id && !d.id.startsWith("foto-")) await store.setDoc(d.id, d.dados);
+    aviso(`Cópia restaurada (${feitos} registos)`); render();
+  } catch (err) { erro(err); }
+}
+
 async function apagarVarios(itens) {
   const fich = itens.flatMap((i) => (i.anexos || []).map((a) => a.caminho));
   for (const i of itens) await store.remove(i.id);
@@ -1593,6 +1670,25 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && store && !$("#dlg").open && !(a && /INPUT|TEXTAREA|SELECT/.test(a.tagName))) render();
 });
 
+
+/* ---------- atualização automática (Supabase Realtime) ---------- */
+let canal = null, rtPendente = false;
+function ligarTempoReal() {
+  if (!sb || canal) return;
+  const mudou = () => {
+    if (Date.now() - ultimaEscrita < 2500) return; // foi este aparelho que gravou
+    const a = document.activeElement;
+    if ($("#dlg").open || (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName))) { rtPendente = true; aviso("Há alterações novas — vão aparecer quando acabares"); return; }
+    clearTimeout(mudou.t); mudou.t = setTimeout(() => { render(); aviso("Atualizado com alterações de outra pessoa"); }, 400);
+  };
+  canal = sb.channel("casa")
+    .on("postgres_changes", { event: "*", schema: "public", table: "itens" }, mudou)
+    .on("postgres_changes", { event: "*", schema: "public", table: "documentos" }, mudou)
+    .subscribe();
+}
+document.addEventListener("focusout", () => setTimeout(() => { const a = document.activeElement; if (rtPendente && !$("#dlg").open && !(a && /INPUT|TEXTAREA|SELECT/.test(a.tagName))) { rtPendente = false; render(); } }, 300));
+$("#dlg").addEventListener("close", () => { if (rtPendente) { rtPendente = false; setTimeout(render, 200); } });
+
 /* =====================================================================
    ENTRADA (login)
    ===================================================================== */
@@ -1601,8 +1697,11 @@ function mostrarApp(estado) {
   $("#estado").textContent = estado;
   render();
   fotoFamilia().then(atualizarLogo).catch(() => {});
+  ligarTempoReal();
+  lancarContas().catch((e) => console.error(e));
 }
 function mostrarLogin(msg, ok) {
+  if (canal && sb) { sb.removeChannel(canal); canal = null; }
   store = null; FOTO = undefined; atualizarLogo();
   $("#app").hidden = true; $("#login").hidden = false;
   const m = $("#login-msg"); m.textContent = msg || ""; m.classList.toggle("ok", !!ok);
@@ -1688,5 +1787,6 @@ async function iniciar() {
 }
 
 montarMenus();
+if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
 $("#btn-copia").onclick = exportarExcel;
 iniciar();
