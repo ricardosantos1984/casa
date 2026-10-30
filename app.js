@@ -807,24 +807,35 @@ async function vCompras(el) {
    DESPESAS, VEÍCULOS, CASA, FAMÍLIA, MÉDICOS
    ===================================================================== */
 let mesDesp = hoje().slice(0, 7);
+const mesSeguinte = (m) => somaMeses(m + "-01", 1).slice(0, 7);
+const nomeDoMes = (m) => cap(deIso(m + "-01").toLocaleDateString("pt-PT", { month: "long", year: "numeric" }));
+function resumoDespesas(vis) {
+  if (!vis.length) return "";
+  const tot = vis.reduce((s, d) => s + (+d.valor || 0), 0);
+  const porCat = {}; vis.forEach((d) => { const c = d.cat || "Sem categoria"; porCat[c] = (porCat[c] || 0) + (+d.valor || 0); });
+  const porQuem = {}; vis.forEach((d) => { if (d.quem) porQuem[d.quem] = (porQuem[d.quem] || 0) + (+d.valor || 0); });
+  const max = Math.max(...Object.values(porCat), 1);
+  return `<div class="resumo"><div class="total">Total: ${euro(tot)}</div>
+    ${Object.entries(porCat).sort((a, b) => b[1] - a[1]).map(([c, v]) => `<div class="barra"><span>${esc(c)}</span><span class="b"><i style="width:${(v / max) * 100}%"></i></span><b>${euro(v)}</b></div>`).join("")}
+    ${Object.keys(porQuem).length ? `<div class="det">${Object.entries(porQuem).map(([q, v]) => `${esc(q)}: ${euro(v)}`).join(" · ")}</div>` : ""}</div>`;
+}
 async function vDespesas(el) {
-  const nomeMes = deIso(mesDesp + "-01").toLocaleDateString("pt-PT", { month: "long", year: "numeric" });
-  el.innerHTML = `<div class="cab"><div><h1>Despesas</h1><div class="sub2">${cap(nomeMes)}</div></div>
-    <label class="mes">Mês <input type="month" id="mes" value="${mesDesp}"></label></div>`;
+  const m1 = mesDesp, m2 = mesSeguinte(m1), atual = m1 === hoje().slice(0, 7);
+  el.innerHTML = `<div class="cab"><div><h1>Despesas</h1><div class="sub2">${nomeDoMes(m1)} e ${nomeDoMes(m2).toLowerCase()}</div></div>
+    <div class="semana"><button class="sec peq" data-m="-1" aria-label="Mês anterior">◀</button>
+      <label class="mes"><input type="month" id="mes" value="${m1}" aria-label="Primeiro mês"></label>
+      <button class="sec peq" data-m="1" aria-label="Mês seguinte">▶</button>
+      ${atual ? "" : `<button class="sec peq" data-m="0">Este mês</button>`}</div></div>`;
   $("#mes", el).onchange = (e) => { mesDesp = e.target.value || hoje().slice(0, 7); render(); };
-  await seccao(el, COLS.despesas, {
-    filtro: (d) => String(d.data || "").startsWith(mesDesp),
-    topo: (vis) => {
-      if (!vis.length) return "";
-      const tot = vis.reduce((s, d) => s + (+d.valor || 0), 0);
-      const porCat = {}; vis.forEach((d) => { const c = d.cat || "Sem categoria"; porCat[c] = (porCat[c] || 0) + (+d.valor || 0); });
-      const porQuem = {}; vis.forEach((d) => { if (d.quem) porQuem[d.quem] = (porQuem[d.quem] || 0) + (+d.valor || 0); });
-      const max = Math.max(...Object.values(porCat), 1);
-      return `<div class="resumo"><div class="total">Total: ${euro(tot)}</div>
-        ${Object.entries(porCat).sort((a, b) => b[1] - a[1]).map(([c, v]) => `<div class="barra"><span>${esc(c)}</span><span class="b"><i style="width:${(v / max) * 100}%"></i></span><b>${euro(v)}</b></div>`).join("")}
-        ${Object.keys(porQuem).length ? `<div class="det">${Object.entries(porQuem).map(([q, v]) => `${esc(q)}: ${euro(v)}`).join(" · ")}</div>` : ""}</div>`;
-    },
+  el.querySelectorAll("[data-m]").forEach((b) => (b.onclick = () => { const n = +b.dataset.m; mesDesp = n === 0 ? hoje().slice(0, 7) : somaMeses(mesDesp + "-01", n).slice(0, 7); render(); }));
+  const colMes = (m) => ({
+    ...COLS.despesas,
+    nome: nomeDoMes(m),
+    vazio: m > hoje().slice(0, 7) ? "Ainda sem despesas previstas para este mês." : "Sem despesas neste mês.",
+    campos: COLS.despesas.campos.map((c) => (c.k === "data" ? { ...c, def: () => (m === hoje().slice(0, 7) ? hoje() : m + "-01") } : c)),
   });
+  await seccao(el, colMes(m1), { titulo: (atual ? "Este mês · " : "") + nomeDoMes(m1), filtro: (d) => String(d.data || "").startsWith(m1), topo: resumoDespesas });
+  await seccao(el, colMes(m2), { titulo: (atual ? "Próximo mês · " : "") + nomeDoMes(m2), filtro: (d) => String(d.data || "").startsWith(m2), topo: resumoDespesas });
 }
 
 async function vVeiculos(el) {
