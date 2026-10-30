@@ -547,6 +547,7 @@ async function vInicio(el) {
   const sel = (docE && docE.sel) || {};
   const alertas = [];
   ids.forEach((cid, n) => { if (cid === "consultas") return; listas[n].forEach((it) => (COLS[cid].alertas(it) || []).forEach((a) => alertas.push({ ...a, rota: ROTA_DE[cid], tit: COLS[cid].titulo(it), ico: typeof COLS[cid].ico === "function" ? COLS[cid].ico(it) : COLS[cid].ico }))); });
+  alertas.push(...alertasEscolares());
   alertas.sort((a, b) => a.dias - b.dias);
   const consultas = listas[ids.indexOf("consultas")].filter((c) => c.data && diasAte(c.data) >= 0 && diasAte(c.data) <= 60)
     .sort((a, b) => String(a.data + (a.hora || "")).localeCompare(String(b.data + (b.hora || "")))).slice(0, 4);
@@ -790,8 +791,54 @@ async function vFamilia(el) {
   await seccao(el, COLS.documentos);
 }
 
+
+/* ---------- calendário escolar da Ema (Agrupamento de Escolas Templários, 2026/27) ---------- */
+const CAL_ESCOLAR = [
+  { desc: "Início do 1.º semestre", ini: "2026-09-11", tipo: "marco" },
+  { desc: "1.ª interrupção", ini: "2026-10-26", fim: "2026-10-30", tipo: "pausa" },
+  { desc: "2.ª interrupção (Natal)", ini: "2026-12-23", fim: "2026-12-31", tipo: "pausa" },
+  { desc: "Fim do 1.º semestre", ini: "2027-01-29", tipo: "marco" },
+  { desc: "3.ª interrupção", ini: "2027-02-01", fim: "2027-02-05", tipo: "pausa" },
+  { desc: "4.ª interrupção (Carnaval)", ini: "2027-02-08", fim: "2027-02-10", tipo: "pausa" },
+  { desc: "Início do 2.º semestre", ini: "2027-02-11", tipo: "marco" },
+  { desc: "Feriado municipal de Tomar", ini: "2027-03-01", tipo: "feriado" },
+  { desc: "5.ª interrupção (Páscoa)", ini: "2027-03-25", fim: "2027-04-02", tipo: "pausa" },
+  { desc: "Fim das aulas — 9.º, 11.º e 12.º anos", ini: "2027-06-04", tipo: "fim" },
+  { desc: "Fim das aulas — 5.º, 6.º, 7.º, 8.º e 10.º anos", ini: "2027-06-11", tipo: "fim" },
+  { desc: "Fim das aulas — pré-escolar e 1.º ciclo", ini: "2027-06-30", tipo: "fim" },
+];
+function estadoCal(e) {
+  const a = diasAte(e.ini), b = diasAte(e.fim || e.ini);
+  if (b < 0) return { passou: true };
+  if (a <= 0) return { agora: true, texto: e.fim ? `a decorrer, até ${dm(e.fim)}` : "hoje" };
+  return { dias: a, texto: rel(a) };
+}
+function alertasEscolares() {
+  return CAL_ESCOLAR.filter((e) => e.tipo === "pausa" || e.tipo === "feriado").map((e) => {
+    const st = estadoCal(e);
+    if (st.passou) return null;
+    if (st.agora) return { nivel: "azul", dias: 0, texto: "Sem aulas, " + st.texto, rota: "escola", tit: "Ema — " + e.desc, ico: "escola" };
+    if (st.dias <= 21) return { nivel: st.dias <= 7 ? "laranja" : "azul", dias: st.dias, texto: `${fmtData(e.ini)}${e.fim ? " a " + fmtData(e.fim) : ""} · ${st.texto}`, rota: "escola", tit: "Ema — " + e.desc, ico: "escola" };
+    return null;
+  }).filter(Boolean);
+}
+function blocoCalendario() {
+  const prox = CAL_ESCOLAR.find((e) => !estadoCal(e).passou);
+  const linha = (e) => {
+    const st = estadoCal(e);
+    const cls = st.passou ? "passou" : e === prox ? "prox" : "";
+    const ico = e.tipo === "pausa" ? "lazer" : e.tipo === "feriado" ? "calendario" : e.tipo === "fim" ? "escudo" : "escola";
+    return `<div class="cal-l ${cls}"><span class="bolha ${e.tipo === "pausa" && !st.passou ? "azul" : ""}">${svg(ico)}</span>
+      <span class="ct"><b>${esc(e.desc)}</b><span class="det">${fmtData(e.ini)}${e.fim ? " a " + fmtData(e.fim) : ""}</span></span>
+      ${st.passou ? `<span class="det">já passou</span>` : `<span class="tag ${st.agora ? "" : st.dias <= 7 ? "laranja" : ""}">${esc(st.agora ? "agora" : st.texto)}</span>`}</div>`;
+  };
+  return `<section class="seccao"><div class="sec-cab"><h2>Calendário escolar 2026/27</h2></div>
+    <p class="det" style="margin:0">Agrupamento de Escolas Templários · regime semestral</p>
+    ${CAL_ESCOLAR.map(linha).join("")}</section>`;
+}
+
 async function vEscola(el) {
-  el.innerHTML = cab("Escola Ema", "Testes, trabalhos, reuniões, atividades e contactos da escola.");
+  el.innerHTML = cab("Escola Ema", "Calendário, testes, trabalhos, reuniões, atividades e contactos da escola.") + blocoCalendario();
   await seccao(el, COLS.escola_testes);
   await seccao(el, COLS.escola_eventos);
   await seccao(el, COLS.escola_atividades);
