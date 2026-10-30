@@ -803,9 +803,7 @@ const CAL_ESCOLAR = [
   { desc: "Início do 2.º semestre", ini: "2027-02-11", tipo: "marco" },
   { desc: "Feriado municipal de Tomar", ini: "2027-03-01", tipo: "feriado" },
   { desc: "5.ª interrupção (Páscoa)", ini: "2027-03-25", fim: "2027-04-02", tipo: "pausa" },
-  { desc: "Fim das aulas — 9.º, 11.º e 12.º anos", ini: "2027-06-04", tipo: "fim" },
-  { desc: "Fim das aulas — 5.º, 6.º, 7.º, 8.º e 10.º anos", ini: "2027-06-11", tipo: "fim" },
-  { desc: "Fim das aulas — pré-escolar e 1.º ciclo", ini: "2027-06-30", tipo: "fim" },
+  { desc: "Último dia de aulas (5.º ano)", ini: "2027-06-11", tipo: "fim" },
 ];
 function estadoCal(e) {
   const a = diasAte(e.ini), b = diasAte(e.fim || e.ini);
@@ -833,7 +831,7 @@ function blocoCalendario() {
       ${st.passou ? `<span class="det">já passou</span>` : `<span class="tag ${st.agora ? "" : st.dias <= 7 ? "laranja" : ""}">${esc(st.agora ? "agora" : st.texto)}</span>`}</div>`;
   };
   return `<section class="seccao"><div class="sec-cab"><h2>Calendário escolar 2026/27</h2></div>
-    <p class="det" style="margin:0">Agrupamento de Escolas Templários · regime semestral</p>
+    <p class="det" style="margin:0">Agrupamento de Escolas Templários · 5.º ano · regime semestral</p>
     ${CAL_ESCOLAR.map(linha).join("")}</section>`;
 }
 
