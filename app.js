@@ -63,6 +63,13 @@ function storeLocal() {
     async remove(id) { const x = ler(); x.itens = x.itens.filter((y) => y.id !== id); gravar(x); },
     async getDoc(id) { return ler().docs[id] || null; },
     async setDoc(id, d) { const x = ler(); x.docs[id] = d; gravar(x); },
+    async upload(caminho, file) {
+      if (file.size > 3 * 1024 * 1024) throw new Error("No modo demonstração só cabem ficheiros até 3 MB");
+      const url = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+      const x = ler(); x.ficheiros = x.ficheiros || {}; x.ficheiros[caminho] = url; gravar(x);
+    },
+    async urls(caminhos) { const x = ler().ficheiros || {}; return Object.fromEntries(caminhos.map((c) => [c, x[c] || ""])); },
+    async apagarFicheiros(caminhos) { const x = ler(); caminhos.forEach((c) => { if (x.ficheiros) delete x.ficheiros[c]; }); gravar(x); },
   };
 }
 function storeSupabase() {
@@ -75,6 +82,17 @@ function storeSupabase() {
     async remove(id) { ok(await sb.from("itens").delete().eq("id", id)); },
     async getDoc(id) { const r = ok(await sb.from("documentos").select("dados").eq("id", id).maybeSingle()); return r ? r.dados : null; },
     async setDoc(id, d) { ok(await sb.from("documentos").upsert({ id, dados: d })); },
+    async upload(caminho, file) {
+      const r = await sb.storage.from("anexos").upload(caminho, file, { contentType: file.type || "application/octet-stream", upsert: false });
+      if (r.error) throw new Error(/bucket not found/i.test(r.error.message) ? "Falta criar o espaço de ficheiros no Supabase (ver instruções)" : r.error.message);
+    },
+    async urls(caminhos) {
+      if (!caminhos.length) return {};
+      const r = await sb.storage.from("anexos").createSignedUrls(caminhos, 3600);
+      if (r.error) throw r.error;
+      return Object.fromEntries(r.data.map((x) => [x.path, x.signedUrl || ""]));
+    },
+    async apagarFicheiros(caminhos) { if (caminhos.length) { const r = await sb.storage.from("anexos").remove(caminhos); if (r.error) throw r.error; } },
   };
 }
 
@@ -415,7 +433,7 @@ function cartao(col, it) {
   return `<div class="cartao ${nv}" data-id="${esc(it.id)}" tabindex="0" role="button" aria-label="Editar ${esc(col.titulo(it))}">
     ${ico ? `<span class="bolha ${nv}">${svg(ico)}</span>` : ""}
     <div class="ct"><div class="tit">${esc(col.titulo(it))}</div>${col.detalhe ? `<div class="det">${col.detalhe(it)}</div>` : ""}
-    ${al.map((a) => `<span class="al ${a.nivel}">${esc(a.texto)}</span>`).join("")}</div>
+    ${al.map((a) => `<span class="al ${a.nivel}">${esc(a.texto)}</span>`).join("")}${it.anexos && it.anexos.length ? `<span class="al anx-n">📎 ${it.anexos.length} ${it.anexos.length === 1 ? "anexo" : "anexos"}</span>` : ""}</div>
     ${col.valor ? `<div class="val">${esc(col.valor(it))}</div>` : ""}
     ${col.acao ? `<button class="sec peq" data-acao="${esc(it.id)}">${typeof col.acao.l === "function" ? col.acao.l(it) : col.acao.l}</button>` : ""}
   </div>`;
@@ -481,32 +499,94 @@ function lerForm(f, campos) {
   return d;
 }
 
+
+/* ---------- anexos (ficheiros) ---------- */
+const novoUid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const nomeSeguro = (n) => n.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]+/g, "_").slice(-80);
+const tamanho = (b) => (b > 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(b / 1024)) + " KB");
+function icoFicheiro(a) {
+  const n = (a.nome || "").toLowerCase(), t = a.tipo || "";
+  if (t.startsWith("image/")) return "🖼️";
+  if (t === "application/pdf" || n.endsWith(".pdf")) return "📄";
+  if (/\.(xlsx?|csv|ods|numbers)$/.test(n)) return "📊";
+  if (/\.(docx?|odt|pages|txt)$/.test(n)) return "📝";
+  return "📎";
+}
+
 async function abrirForm(col, it) {
-  const dlg = $("#dlg");
+  const dlg = $("#dlg"); dlg.oncancel = null;
   const campos = await Promise.all(col.campos.map(async (c) => ({ ...c, o: typeof c.o === "function" ? await c.o() : c.o })));
   const val = (c) => (it ? it[c.k] : typeof c.def === "function" ? c.def() : c.def ?? "");
+  const pasta = (it && it.pasta) || `${col.id}/${novoUid()}`;
+  let anexos = [...((it && it.anexos) || [])];
+  const novos = [], removidos = [];
   dlg.innerHTML = `<form class="form" novalidate>
     <h2>${it ? "Editar" : "Novo(a)"} ${esc(col.item)}</h2>
     ${campos.map((c) => campoHtml(c, val(c))).join("")}
+    <div class="anexos"><div class="anx-cab"><span>Anexos</span><label class="sec peq anx-add">📎 Juntar ficheiro<input type="file" multiple hidden></label></div>
+      <div class="anx-lista"></div><p class="det anx-dica">Vouchers, bilhetes, faturas, fotos, PDF, Excel, Word… (até 50 MB cada)</p></div>
     <p class="msg" role="alert"></p>
     <div class="acoes">${it ? `<button type="button" class="perigo" data-a="apagar">Apagar</button>` : ""}<span class="esp"></span>
     <button type="button" class="sec" data-a="fechar">Cancelar</button><button type="submit" class="pri">Gravar</button></div></form>`;
   const f = $("form", dlg);
+  const lista = $(".anx-lista", f);
+  const desenharAnexos = async () => {
+    if (!anexos.length) { lista.innerHTML = ""; return; }
+    lista.innerHTML = anexos.map((a, i) => `<div class="anx" data-i="${i}"><span class="anx-ico">${icoFicheiro(a)}</span>
+      <a class="anx-nome" target="_blank" rel="noopener" data-c="${esc(a.caminho)}">${esc(a.nome)}</a><span class="det">${a.a_carregar ? "a carregar…" : tamanho(a.tamanho || 0)}</span>
+      <button type="button" class="anx-x" data-x="${i}" aria-label="Retirar ${esc(a.nome)}">✕</button></div>`).join("");
+    try {
+      const u = await store.urls(anexos.filter((a) => !a.a_carregar).map((a) => a.caminho));
+      $$(".anx-nome", lista).forEach((l) => { const url = u[l.dataset.c]; if (url) { l.href = url; l.setAttribute("download", l.textContent); } });
+    } catch (err) { console.error(err); }
+  };
+  desenharAnexos();
+  $(".anx-add input", f).onchange = async (e) => {
+    const fs = [...(e.target.files || [])]; e.target.value = "";
+    for (const file of fs) {
+      if (file.size > 50 * 1024 * 1024) { aviso(`${file.name} tem mais de 50 MB`); continue; }
+      const a = { nome: file.name, caminho: `${pasta}/${Date.now()}-${nomeSeguro(file.name)}`, tipo: file.type, tamanho: file.size, a_carregar: true };
+      anexos.push(a); desenharAnexos();
+      try { await store.upload(a.caminho, file); delete a.a_carregar; novos.push(a.caminho); aviso("Ficheiro carregado"); }
+      catch (err) { anexos = anexos.filter((x) => x !== a); $(".msg", f).textContent = "Não foi possível carregar " + file.name + ": " + (err.message || err); }
+      desenharAnexos();
+    }
+  };
+  lista.onclick = (e) => {
+    const x = e.target.closest("[data-x]"); if (!x) return;
+    const a = anexos[+x.dataset.x]; if (!a || a.a_carregar) return;
+    if (!confirm(`Retirar "${a.nome}"?`)) return;
+    anexos.splice(+x.dataset.x, 1); removidos.push(a.caminho); desenharAnexos();
+  };
+  const fechar = async () => {
+    dlg.close();
+    if (novos.length) { try { await store.apagarFicheiros(novos); } catch (err) { console.error(err); } }
+  };
   f.onsubmit = async (e) => {
     e.preventDefault();
+    if (anexos.some((a) => a.a_carregar)) { $(".msg", f).textContent = "Espera que os ficheiros acabem de carregar."; return; }
     const d = lerForm(f, campos);
+    d.anexos = anexos.map(({ a_carregar, ...a }) => a); d.pasta = pasta;
     const falta = campos.find((c) => c.req && (d[c.k] === "" || d[c.k] == null));
     if (falta) { $(".msg", f).textContent = `Preenche "${falta.l}".`; f.elements.namedItem(falta.k).focus(); return; }
     try {
       if (it) await store.update(it.id, { ...semId(it), ...d }); else await store.add(col.id, d);
+      novos.length = 0;
+      if (removidos.length) { try { await store.apagarFicheiros(removidos); } catch (err) { console.error(err); } }
       dlg.close(); aviso("Gravado"); render();
     } catch (err) { $(".msg", f).textContent = "Não foi possível gravar: " + (err.message || err); }
   };
-  $("[data-a=fechar]", f).onclick = () => dlg.close();
+  $("[data-a=fechar]", f).onclick = fechar;
+  dlg.oncancel = (e) => { e.preventDefault(); fechar(); };
   const ap = $("[data-a=apagar]", f);
   if (ap) ap.onclick = async () => {
-    if (!confirm("Apagar este registo?")) return;
-    try { await store.remove(it.id); dlg.close(); aviso("Apagado"); render(); } catch (err) { erro(err); }
+    if (!confirm("Apagar este registo" + (anexos.length ? " e os seus anexos" : "") + "?")) return;
+    try {
+      await store.remove(it.id);
+      const todos = [...new Set([...anexos.map((a) => a.caminho), ...removidos, ...novos])];
+      if (todos.length) { try { await store.apagarFicheiros(todos); } catch (err) { console.error(err); } }
+      dlg.close(); aviso("Apagado"); render();
+    } catch (err) { erro(err); }
   };
   dlg.showModal();
   const p = $("input:not([type=checkbox]),select,textarea", f); if (p) p.focus();
@@ -546,7 +626,7 @@ async function novaFoto(file) {
 }
 function ajustarFoto() {
   const f = { ...FOTO };
-  const dlg = $("#dlg");
+  const dlg = $("#dlg"); dlg.oncancel = null;
   dlg.innerHTML = `<div class="form"><div class="pega" aria-hidden="true"></div><h2>A tua foto de perfil</h2>
     <div class="prev-av"><div class="avatar prev">${avatarHtml(f).replace(/^<span class="avatar ">|<\/span>$/g, "")}</div></div>
     <p class="det" style="margin:0;text-align:center">Arrasta a foto com o dedo para a centrar no círculo.</p>
@@ -1093,7 +1173,7 @@ function montarMenus() {
   $("#btn-mais").onclick = abrirMais;
 }
 function abrirMais() {
-  const dlg = $("#dlg");
+  const dlg = $("#dlg"); dlg.oncancel = null;
   const online = store && store.modo === "online";
   dlg.innerHTML = `<div class="form folha-mais"><div class="pega" aria-hidden="true"></div><h2>Mais</h2>
     <div class="mosaico">${SECOES.filter(([r]) => !NA_BARRA.includes(r)).map(([r, l]) => `<a href="#${r}" class="tile">${svg(r)}<span>${l}</span></a>`).join("")}</div>
@@ -1167,7 +1247,7 @@ async function entrar(session) {
 }
 
 function dialogoSenha(titulo) {
-  const dlg = $("#dlg");
+  const dlg = $("#dlg"); dlg.oncancel = null;
   dlg.innerHTML = `<form class="form"><h2>${titulo}</h2>
     <label class="campo"><span>Nova senha (mínimo 8 caracteres)</span><input type="password" name="s1" autocomplete="new-password" minlength="8" required></label>
     <label class="campo"><span>Repetir a nova senha</span><input type="password" name="s2" autocomplete="new-password" required></label>

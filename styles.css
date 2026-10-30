@@ -190,6 +190,19 @@ a.mini:hover{background:var(--hover)}
 .imp-barra .pri{display:inline-flex;align-items:center;gap:8px}
 .imp-barra .pri svg{width:20px;height:20px}
 
+/* anexos */
+.anexos{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:var(--raio);background:var(--painel2);border:1px dashed var(--linha)}
+.anx-cab{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;font-weight:700;color:var(--suave)}
+.anx-add{display:inline-flex;align-items:center;cursor:pointer}
+.anx{display:flex;align-items:center;gap:10px;padding:6px 4px 6px 8px;border-radius:10px;background:var(--painel)}
+.anx-ico{font-size:20px}
+.anx-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;text-decoration:none;color:var(--acento)}
+.anx-nome:not([href]){color:var(--suave)}
+.anx-x{width:36px;height:36px;border-radius:50%;border:none;background:transparent;color:var(--fraco);font-size:16px}
+.anx-x:hover{background:var(--hover);color:var(--vermelho)}
+.anx-dica{margin:0;font-size:13px}
+.al.anx-n{background:var(--painel);color:var(--suave)}
+
 /* ---------- despesas ---------- */
 .resumo{display:flex;flex-direction:column;gap:8px;padding:14px;background:var(--painel2);border-radius:var(--raio)}
 .total{font-size:26px;font-weight:800;letter-spacing:-.02em}
@@ -233,7 +246,7 @@ details summary::before{content:"+ ";color:var(--acento)}
 details[open] summary::before{content:"– "}
 
 /* ---------- janelas ---------- */
-dialog{border:none;border-radius:var(--raio-g);padding:0;width:min(560px,94vw);max-height:90vh;background:var(--painel);color:var(--texto);box-shadow:0 30px 80px rgba(0,0,0,.35)}
+dialog{overflow:auto;overscroll-behavior:contain;border:none;border-radius:var(--raio-g);padding:0;width:min(560px,94vw);max-height:90vh;background:var(--painel);color:var(--texto);box-shadow:0 30px 80px rgba(0,0,0,.35)}
 dialog::backdrop{background:rgba(3,8,18,.6);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 .form{display:flex;flex-direction:column;gap:12px;padding:20px}
 .acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}

@@ -83,3 +83,18 @@ on conflict (email) do update set nome = excluded.nome;
 
 -- Mais tarde, para a Ema (descomentar, trocar o email e correr só esta linha):
 -- insert into public.membros (email, nome) values ('email.da.ema@exemplo.com', 'Ema');
+
+-- 6) Ficheiros anexos (vouchers, faturas, PDF, Excel, fotos…)
+--    Espaço privado "anexos": só os membros da casa podem ver, carregar e apagar.
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('anexos', 'anexos', false, 52428800)
+on conflict (id) do nothing;
+
+drop policy if exists "membros veem anexos" on storage.objects;
+create policy "membros veem anexos" on storage.objects for select to authenticated using (bucket_id = 'anexos' and public.e_membro());
+drop policy if exists "membros carregam anexos" on storage.objects;
+create policy "membros carregam anexos" on storage.objects for insert to authenticated with check (bucket_id = 'anexos' and public.e_membro());
+drop policy if exists "membros alteram anexos" on storage.objects;
+create policy "membros alteram anexos" on storage.objects for update to authenticated using (bucket_id = 'anexos' and public.e_membro());
+drop policy if exists "membros apagam anexos" on storage.objects;
+create policy "membros apagam anexos" on storage.objects for delete to authenticated using (bucket_id = 'anexos' and public.e_membro());
