@@ -241,3 +241,160 @@ window.FICHAS = [
     ],
   },
 ];
+
+// ---------------------------------------------------------------------
+//  Fichas acrescentadas (30/10/2026)
+// ---------------------------------------------------------------------
+(function () {
+  const MAIS = {
+    pt: [
+      {
+        id: "pt4", titulo: "Ortografia e acentuação", sub: "há/à/a, mas/mais, por/pôr, sílabas e acentos",
+        q: [
+          { t: "mc", p: "«___ dois dias que não chove.»", o: ["Há", "À", "A", "Ah"], c: 0, e: "Há (verbo haver) indica tempo passado: há dois dias." },
+          { t: "mc", p: "«Amanhã vou ___ praia.»", o: ["há", "à", "a", "ha"], c: 1, e: "À = a + a (a praia): vou à praia." },
+          { t: "mc", p: "«Gosto de bolo, ___ não posso comer muito.»", o: ["mas", "mais", "más", "maz"], c: 0, e: "Mas liga ideias opostas. Mais indica quantidade." },
+          { t: "mc", p: "«Quero ___ sopa, por favor.»", o: ["mas", "mais", "más", "mãis"], c: 1, e: "Mais = maior quantidade." },
+          { t: "mc", p: "«Vou ___ o livro na estante.»", o: ["por", "pôr", "pôr-se", "porr"], c: 1, e: "Pôr (verbo) leva acento. Por é preposição (passei por ti)." },
+          { t: "mc", p: "Qual destas palavras está bem escrita?", o: ["excessão", "exceção", "exeção", "esceção"], c: 1, e: "Escreve-se exceção." },
+          { t: "mc", p: "Qual destas palavras é aguda (a sílaba mais forte é a última)?", o: ["café", "mesa", "lâmpada", "árvore"], c: 0, e: "Ca-FÉ: a sílaba tónica é a última, por isso é aguda." },
+          { t: "mc", p: "Qual destas palavras é esdrúxula (sílaba forte é a antepenúltima)?", o: ["janela", "lâmpada", "sofá", "lápis"], c: 1, e: "LÂM-pa-da: a sílaba tónica é a antepenúltima. Todas as esdrúxulas têm acento." },
+          { t: "txt", p: "Divide em sílabas a palavra «janela» (usa hífenes).", r: ["ja-ne-la", "ja ne la"], e: "ja-ne-la (3 sílabas)." },
+          { t: "num", p: "Quantas sílabas tem a palavra «borboleta»?", r: 4, e: "bor-bo-le-ta = 4 sílabas." },
+        ],
+      },
+      {
+        id: "pt5", titulo: "Compreensão de texto", sub: "Ler com atenção e responder",
+        texto: "O Rui encontrou um cão perdido junto ao rio Nabão. O cão tinha uma coleira azul com o nome «Bolinhas». Com a ajuda da irmã, a Marta, o Rui fez um cartaz e afixou-o na padaria do bairro.\n\nNo dia seguinte, a dona do cão, uma senhora de cabelos brancos, apareceu à porta deles com um bolo de chocolate para agradecer. O Bolinhas abanava tanto a cauda que parecia uma ventoinha!\n\nO Rui ficou tão contente que decidiu que, quando fosse grande, queria ser veterinário.",
+        q: [
+          { t: "mc", p: "Onde encontrou o Rui o cão?", o: ["no parque", "junto ao rio Nabão", "na escola", "na padaria"], c: 1, e: "O texto diz: «encontrou um cão perdido junto ao rio Nabão»." },
+          { t: "txt", p: "Como se chamava o cão?", r: ["bolinhas", "o bolinhas"], e: "O nome estava na coleira: Bolinhas." },
+          { t: "mc", p: "Quem ajudou o Rui a fazer o cartaz?", o: ["a mãe", "a irmã, a Marta", "a senhora", "o padeiro"], c: 1, e: "«Com a ajuda da irmã, a Marta»." },
+          { t: "mc", p: "Onde afixaram o cartaz?", o: ["na escola", "no café", "na padaria do bairro", "no rio"], c: 2, e: "Afixaram-no na padaria do bairro." },
+          { t: "mc", p: "O que trouxe a dona do cão para agradecer?", o: ["flores", "um bolo de chocolate", "um brinquedo", "dinheiro"], c: 1, e: "Trouxe um bolo de chocolate." },
+          { t: "mc", p: "«Abanava tanto a cauda que parecia uma ventoinha.» Isto quer dizer que o cão estava…", o: ["triste", "com medo", "muito contente", "cansado"], c: 2, e: "Os cães abanam a cauda quando estão felizes. É uma comparação divertida." },
+          { t: "txt", p: "O que quer o Rui ser quando for grande?", r: ["veterinário", "veterinario"], e: "Quer ser veterinário." },
+          { t: "mc", p: "Qual é a ideia principal do texto?", o: ["Um menino perde o seu cão", "Um menino ajuda um cão perdido a voltar para a dona", "Uma senhora faz bolos", "Dois irmãos vão à padaria"], c: 1, e: "O texto conta como o Rui ajudou o Bolinhas a voltar para a dona." },
+        ],
+      },
+    ],
+    mat: [
+      {
+        id: "mat4", titulo: "Problemas do dia a dia", sub: "Dinheiro, tempo e quantidades",
+        q: [
+          { t: "num", p: "A Ema tem 20 €. Compra um livro de 12,50 €. Quanto dinheiro lhe sobra (em €)?", r: 7.5, e: "20 − 12,50 = 7,50 €." },
+          { t: "num", p: "Um bilhete de comboio custa 3,40 €. Quanto custam 3 bilhetes (em €)?", r: 10.2, e: "3 × 3,40 = 10,20 €." },
+          { t: "txt", p: "Uma aula começa às 8:30 e dura 50 minutos. A que horas acaba? (escreve assim: 9:20)", r: ["9:20", "09:20", "9h20", "9.20", "9 20"], e: "8:30 + 50 min = 9:20." },
+          { t: "num", p: "Cada autocarro leva 45 alunos. Quantos autocarros são precisos para 180 alunos?", r: 4, e: "180 ÷ 45 = 4 autocarros." },
+          { t: "num", p: "A mãe comprou 2 kg de maçãs a 1,80 € o quilo. Quanto pagou (em €)?", r: 3.6, e: "2 × 1,80 = 3,60 €." },
+          { t: "num", p: "Quantos minutos tem 2 horas e meia?", r: 150, e: "2 h = 120 min; meia hora = 30 min; total 150 min." },
+          { t: "num", p: "A Ema leu 72 páginas em 6 dias, sempre o mesmo número por dia. Quantas páginas leu por dia?", r: 12, e: "72 ÷ 6 = 12 páginas." },
+          { t: "num", p: "Um pack de 6 iogurtes custa 2,40 €. Quanto custa cada iogurte (em €)?", r: 0.4, e: "2,40 ÷ 6 = 0,40 €." },
+          { t: "num", p: "Havia 3 dúzias de ovos e usaram-se 15. Quantos ovos sobraram?", r: 21, e: "3 dúzias = 36 ovos; 36 − 15 = 21." },
+          { t: "num", p: "Um quintal retangular mede 12 m por 8 m. Qual é o perímetro (em metros)?", r: 40, e: "12 + 8 + 12 + 8 = 40 m." },
+        ],
+      },
+      {
+        id: "mat5", titulo: "Medidas e dados", sub: "Massa, capacidade, tempo, média e moda",
+        q: [
+          { t: "num", p: "Quantos gramas tem 1 kg?", r: 1000, e: "1 kg = 1000 g." },
+          { t: "num", p: "Quantos mililitros tem 2,5 litros?", r: 2500, e: "1 L = 1000 mL, logo 2,5 L = 2500 mL." },
+          { t: "num", p: "Quantos minutos tem 3 horas?", r: 180, e: "3 × 60 = 180 min." },
+          { t: "num", p: "Quanto é 750 g + 1,25 kg? (responde em kg)", r: 2, e: "750 g = 0,75 kg; 0,75 + 1,25 = 2 kg." },
+          { t: "num", p: "Qual é a média de 6, 8 e 10?", r: 8, e: "(6 + 8 + 10) ÷ 3 = 24 ÷ 3 = 8." },
+          { t: "num", p: "A Ema teve 3, 4, 5 e 4 nos testes. Qual é a média?", r: 4, e: "(3 + 4 + 5 + 4) ÷ 4 = 16 ÷ 4 = 4." },
+          { t: "num", p: "Qual é a moda (o valor que aparece mais vezes) de 2, 3, 3, 5, 3, 4?", r: 3, e: "O 3 aparece três vezes: é a moda." },
+          { t: "mc", p: "Que unidade usarias para medir a água de uma garrafa?", o: ["metro", "quilograma", "litro", "hora"], c: 2, e: "Capacidade mede-se em litros (L) ou mililitros (mL)." },
+          { t: "num", p: "Quantos anos tem um século?", r: 100, e: "1 século = 100 anos." },
+          { t: "num", p: "Quantos milímetros tem 1 metro?", r: 1000, e: "1 m = 100 cm = 1000 mm." },
+        ],
+      },
+    ],
+    cn: [
+      {
+        id: "cn4", titulo: "O microscópio e a célula", sub: "Unidade básica da vida",
+        q: [
+          { t: "mc", p: "Qual é a unidade básica de todos os seres vivos?", o: ["o órgão", "a célula", "o tecido", "o átomo"], c: 1, e: "Todos os seres vivos são formados por células." },
+          { t: "mc", p: "Que instrumento usamos para observar células?", o: ["telescópio", "microscópio", "lupa de bolso", "binóculos"], c: 1, e: "O microscópio amplia muitas vezes o que observamos." },
+          { t: "mc", p: "Em que parte do microscópio se coloca a preparação?", o: ["ocular", "platina", "revólver", "pé"], c: 1, e: "A preparação fica na platina, presa pelas pinças." },
+          { t: "mc", p: "Em que lente encostamos o olho?", o: ["objetiva", "ocular", "condensador", "espelho"], c: 1, e: "A ocular fica junto ao olho; as objetivas ficam junto à preparação." },
+          { t: "num", p: "Com uma ocular de 10× e uma objetiva de 40×, qual é a ampliação total?", r: 400, e: "Ampliação = ocular × objetiva = 10 × 40 = 400 vezes." },
+          { t: "mc", p: "Que parte da célula controla as suas atividades?", o: ["membrana", "citoplasma", "núcleo", "parede"], c: 2, e: "O núcleo controla a célula." },
+          { t: "mc", p: "O que envolve e protege todas as células?", o: ["a membrana celular", "a casca", "a pele", "o núcleo"], c: 0, e: "A membrana celular envolve a célula." },
+          { t: "mc", p: "O que têm as células das plantas que as dos animais não têm?", o: ["núcleo", "membrana", "parede celular e cloroplastos", "citoplasma"], c: 2, e: "As células vegetais têm parede celular e cloroplastos (com clorofila)." },
+          { t: "mc", p: "Os seres formados por uma só célula chamam-se…", o: ["pluricelulares", "unicelulares", "vertebrados", "produtores"], c: 1, e: "Unicelulares, como muitas bactérias." },
+        ],
+      },
+      {
+        id: "cn5", titulo: "Cadeias alimentares", sub: "Produtores, consumidores e decompositores",
+        q: [
+          { t: "mc", p: "Os seres vivos que produzem o seu próprio alimento chamam-se…", o: ["consumidores", "produtores", "decompositores", "predadores"], c: 1, e: "As plantas são produtoras: fazem fotossíntese." },
+          { t: "mc", p: "Numa cadeia alimentar, a seta (→) quer dizer…", o: ["é amigo de", "é comido por", "vive com", "é maior que"], c: 1, e: "Erva → coelho: a erva é comida pelo coelho." },
+          { t: "mc", p: "Em «erva → coelho → raposa», o coelho é um…", o: ["produtor", "consumidor de 1.ª ordem", "consumidor de 2.ª ordem", "decompositor"], c: 1, e: "Come o produtor (erva): é consumidor de 1.ª ordem." },
+          { t: "mc", p: "Na mesma cadeia, a raposa é um…", o: ["produtor", "consumidor de 1.ª ordem", "consumidor de 2.ª ordem", "decompositor"], c: 2, e: "Come um consumidor de 1.ª ordem: é de 2.ª ordem." },
+          { t: "mc", p: "Os fungos e as bactérias do solo transformam os restos de seres vivos em…", o: ["plástico", "sais minerais", "oxigénio", "água salgada"], c: 1, e: "São decompositores: devolvem sais minerais ao solo." },
+          { t: "mc", p: "Qual destes seres é um produtor?", o: ["pinheiro", "coelho", "águia", "cogumelo"], c: 0, e: "O pinheiro é uma planta. O cogumelo é um fungo (decompositor)." },
+          { t: "mc", p: "Várias cadeias alimentares ligadas entre si formam uma…", o: ["rede elétrica", "teia alimentar", "pirâmide de idades", "linha do tempo"], c: 1, e: "Teia alimentar." },
+          { t: "mc", p: "Se os coelhos desaparecessem de uma floresta, as raposas…", o: ["teriam mais comida", "teriam menos comida", "não seriam afetadas", "passariam a fazer fotossíntese"], c: 1, e: "Os coelhos são alimento das raposas: elas ficariam com menos comida." },
+        ],
+      },
+    ],
+    hgp: [
+      {
+        id: "hgp4", titulo: "O reinado de D. Dinis", sub: "Agricultura, cultura e fronteiras",
+        q: [
+          { t: "mc", p: "D. Dinis ficou conhecido como…", o: ["o Conquistador", "o Lavrador", "o Navegador", "o Justiceiro"], c: 1, e: "Chamavam-lhe o Lavrador porque desenvolveu muito a agricultura." },
+          { t: "mc", p: "D. Dinis mandou alargar o pinhal de…", o: ["Leiria", "Sintra", "Bragança", "Faro"], c: 0, e: "O Pinhal de Leiria protegia os campos das areias e dava madeira." },
+          { t: "mc", p: "Em 1290, D. Dinis criou o Estudo Geral, que foi a primeira…", o: ["escola de pilotos", "universidade portuguesa", "biblioteca", "fábrica"], c: 1, e: "O Estudo Geral foi a primeira universidade portuguesa (começou em Lisboa)." },
+          { t: "mc", p: "D. Dinis mandou escrever os documentos oficiais em português em vez de…", o: ["latim", "árabe", "castelhano", "francês"], c: 0, e: "O português passou a ser a língua oficial em vez do latim." },
+          { t: "mc", p: "Que tratado, assinado em 1297, fixou a fronteira com Castela?", o: ["Tratado de Zamora", "Tratado de Alcanizes", "Tratado de Tordesilhas", "Tratado de Windsor"], c: 1, e: "O Tratado de Alcanizes definiu uma das fronteiras mais antigas da Europa." },
+          { t: "mc", p: "A mulher de D. Dinis, conhecida pelo «milagre das rosas», era…", o: ["D. Teresa", "a Rainha Santa Isabel", "D. Leonor Teles", "D. Filipa de Lencastre"], c: 1, e: "A Rainha Santa Isabel ajudava os pobres." },
+          { t: "mc", p: "D. Dinis também era trovador, isto é, escrevia…", o: ["mapas", "cantigas", "leis do mar", "receitas"], c: 1, e: "Escreveu muitas cantigas de amor e de amigo." },
+          { t: "mc", p: "Em 1319, D. Dinis criou uma ordem que ficou com os bens dos Templários e que mais tarde teve sede em Tomar. Qual?", o: ["Ordem de Avis", "Ordem de Santiago", "Ordem de Cristo", "Ordem do Hospital"], c: 2, e: "A Ordem de Cristo, que a partir de 1357 teve sede no Convento de Cristo, em Tomar." },
+        ],
+      },
+      {
+        id: "hgp5", titulo: "A crise de 1383-1385", sub: "Independência em perigo e Aljubarrota",
+        q: [
+          { t: "mc", p: "Em 1383 morreu o rei…", o: ["D. Dinis", "D. Fernando", "D. Afonso IV", "D. João I"], c: 1, e: "D. Fernando morreu em 1383 sem filhos rapazes." },
+          { t: "mc", p: "A filha de D. Fernando, D. Beatriz, era casada com o rei de…", o: ["França", "Inglaterra", "Castela", "Aragão"], c: 2, e: "Estava casada com D. João I de Castela." },
+          { t: "mc", p: "Por isso, muitos portugueses tinham medo de…", o: ["perder a independência para Castela", "uma tempestade", "ficar sem pão", "perder o mar"], c: 0, e: "Temiam que Portugal passasse a pertencer a Castela." },
+          { t: "mc", p: "Quem foi escolhido como Regedor e Defensor do Reino?", o: ["o Mestre de Avis", "D. Nuno Álvares Pereira", "D. Leonor Teles", "o Papa"], c: 0, e: "O Mestre de Avis, meio-irmão de D. Fernando." },
+          { t: "mc", p: "Quem foi o grande chefe militar português nesta guerra?", o: ["Viriato", "D. Nuno Álvares Pereira", "Gualdim Pais", "Vasco da Gama"], c: 1, e: "D. Nuno Álvares Pereira, o Condestável." },
+          { t: "mc", p: "Nas Cortes de Coimbra de 1385, o Mestre de Avis foi aclamado rei com o nome…", o: ["D. Afonso V", "D. João I", "D. Duarte", "D. Manuel I"], c: 1, e: "D. João I, primeiro rei da dinastia de Avis." },
+          { t: "num", p: "Em que ano foi a Batalha de Aljubarrota?", r: 1385, e: "A 14 de agosto de 1385 os portugueses venceram os castelhanos." },
+          { t: "mc", p: "Para agradecer a vitória, D. João I mandou construir…", o: ["o Mosteiro dos Jerónimos", "o Mosteiro da Batalha", "a Torre de Belém", "o Castelo de Tomar"], c: 1, e: "O Mosteiro de Santa Maria da Vitória, na Batalha." },
+        ],
+      },
+    ],
+    ing: [
+      {
+        id: "ing4", titulo: "School & classroom", sub: "School objects, subjects, there is / there are",
+        q: [
+          { t: "mc", p: "«Mochila» in English is…", o: ["pencil case", "schoolbag", "rubber", "ruler"], c: 1, e: "Mochila = schoolbag." },
+          { t: "mc", p: "«Borracha» in English is…", o: ["rubber", "sharpener", "glue", "scissors"], c: 0, e: "Borracha = rubber (also eraser)." },
+          { t: "mc", p: "«Estojo» in English is…", o: ["notebook", "pencil case", "board", "desk"], c: 1, e: "Estojo = pencil case." },
+          { t: "txt", p: "Write «régua» in English.", r: ["ruler", "a ruler"], e: "Régua = ruler." },
+          { t: "mc", p: "There ___ a book on the desk.", o: ["is", "are", "am", "be"], c: 0, e: "One thing → there is." },
+          { t: "mc", p: "There ___ two pens in my bag.", o: ["is", "are", "am", "has"], c: 1, e: "More than one → there are." },
+          { t: "mc", p: "Which one is a school subject?", o: ["Kitchen", "Maths", "Garden", "Bedroom"], c: 1, e: "Maths (Matemática) is a school subject." },
+          { t: "txt", p: "What is the plural of «box»?", r: ["boxes"], e: "Words ending in -x add -es: boxes." },
+        ],
+      },
+      {
+        id: "ing5", titulo: "Food & likes", sub: "Food words, like / likes, do / does",
+        q: [
+          { t: "mc", p: "I ___ pizza. (Eu gosto de piza.)", o: ["like", "likes", "liking", "am like"], c: 0, e: "I / you / we / they like." },
+          { t: "mc", p: "She ___ chocolate.", o: ["like", "likes", "liking", "do like"], c: 1, e: "He / she / it likes." },
+          { t: "mc", p: "He doesn't ___ fish.", o: ["like", "likes", "liked", "liking"], c: 0, e: "After doesn't we use like (without -s)." },
+          { t: "mc", p: "___ you like apples?", o: ["Does", "Do", "Are", "Is"], c: 1, e: "Do you like…?" },
+          { t: "mc", p: "«Peixe» in English is…", o: ["meat", "fish", "chicken", "egg"], c: 1, e: "Peixe = fish." },
+          { t: "txt", p: "Write «pão» in English.", r: ["bread"], e: "Pão = bread." },
+          { t: "txt", p: "Write «leite» in English.", r: ["milk"], e: "Leite = milk." },
+          { t: "txt", p: "Complete the answer: «Do you like ice cream?» — «Yes, I ___.»", r: ["do"], e: "Yes, I do. / No, I don't." },
+        ],
+      },
+    ],
+  };
+  (window.FICHAS || []).forEach((d) => { d.fichas.push(...(MAIS[d.id] || [])); });
+})();

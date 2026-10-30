@@ -213,6 +213,10 @@ a.mini:hover{background:var(--hover)}
 .hv{font-size:11px}
 .mini .orc-b{margin-top:4px}
 
+.texto-ficha p{margin:0;font-size:17px;line-height:1.6}
+.fp-texto{border:1.3px solid #000;border-radius:6px;padding:8px 12px;margin:0 0 10px;font-size:11.5pt;line-height:1.5}
+.fp-texto p{margin:0 0 6px}
+
 /* anexos */
 .anexos{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:var(--raio);background:var(--painel2);border:1px dashed var(--linha)}
 .anx-cab{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;font-weight:700;color:var(--suave)}

@@ -68,6 +68,7 @@ function storeLocal() {
       const url = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
       const x = ler(); x.ficheiros = x.ficheiros || {}; x.ficheiros[caminho] = url; gravar(x);
     },
+    async listDocs() { return Object.entries(ler().docs || {}).map(([id, dados]) => ({ id, dados })); },
     async urls(caminhos) { const x = ler().ficheiros || {}; return Object.fromEntries(caminhos.map((c) => [c, x[c] || ""])); },
     async apagarFicheiros(caminhos) { const x = ler(); caminhos.forEach((c) => { if (x.ficheiros) delete x.ficheiros[c]; }); gravar(x); },
   };
@@ -86,6 +87,7 @@ function storeSupabase() {
       const r = await sb.storage.from("anexos").upload(caminho, file, { contentType: file.type || "application/octet-stream", upsert: false });
       if (r.error) throw new Error(/bucket not found/i.test(r.error.message) ? "Falta criar o espaço de ficheiros no Supabase (ver instruções)" : r.error.message);
     },
+    async listDocs() { return ok(await sb.from("documentos").select("id,dados").not("id", "like", "foto-%")); },
     async urls(caminhos) {
       if (!caminhos.length) return {};
       const r = await sb.storage.from("anexos").createSignedUrls(caminhos, 3600);
@@ -856,6 +858,7 @@ function htmlFichaPapel(d, f) {
     <header class="fp-cab"><div><div class="fp-disc" style="color:${d.cor}">${esc(d.nome)} · 5.º ano</div><h2 class="fp-tit">${esc(f.titulo)}</h2><div class="fp-sub">${esc(f.sub)}</div></div>
       <div class="fp-nota">Nota<br><b>____ / ${f.q.length}</b></div></header>
     <div class="fp-dados"><span>Nome: <i class="fp-linha curta larga"></i></span><span>Data: ____/____/______</span></div>
+    ${f.texto ? `<div class="fp-texto">${f.texto.split("\n\n").map((p) => `<p>${esc(p)}</p>`).join("")}</div>` : ""}
     <ol class="fp-q">${q}</ol>
     <footer class="fp-pe">A Nossa Casa · Fichas de estudo da Ema</footer></section>`;
 }
@@ -1194,6 +1197,7 @@ async function vEstudo(el) {
   el.innerHTML = `<a class="voltar" href="#estudo/${disc.id}">‹ ${esc(disc.nome)}</a>
     <div class="cab"><div style="display:flex;gap:14px;align-items:center">${badge(disc, "g")}<div><h1>${esc(ficha.titulo)}</h1><div class="sub2">${esc(ficha.sub)}${r ? ` · melhor nota ${r.melhor}/${r.total}` : ""}</div></div></div></div>
     <section class="seccao">${barraImprimir("Imprimir esta ficha")}<p class="det" style="margin:0">Ou responde aqui na app e toca em Corrigir no fim.</p></section>
+    ${ficha.texto ? `<section class="seccao texto-ficha"><h2>📖 Lê o texto</h2>${ficha.texto.split("\n\n").map((p) => `<p>${esc(p)}</p>`).join("")}</section>` : ""}
     <form class="ficha" id="ficha" autocomplete="off">
       ${ficha.q.map((q, i) => `<section class="perg" data-i="${i}"><div class="perg-n" style="--c:${disc.cor}">${i + 1}</div><div class="perg-c">
         <p class="perg-p">${esc(q.p)}</p>
@@ -1250,6 +1254,75 @@ async function vMedicos(el) {
 }
 
 
+
+/* ---------- cópia de segurança (Excel) ---------- */
+async function exportarExcel() {
+  aviso("A preparar a cópia de segurança…");
+  try {
+    if (!window.XLSX) await carregarScript("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js");
+    const X = window.XLSX, wb = X.utils.book_new(), usados = new Set();
+    const folha = (nome, linhas) => {
+      if (!linhas.length) return;
+      let n = nome.replace(/[\[\]:*?\/\\]/g, "").slice(0, 31), k = 2;
+      while (usados.has(n)) n = nome.slice(0, 28) + " " + k++;
+      usados.add(n);
+      const ws = X.utils.json_to_sheet(linhas);
+      ws["!cols"] = Object.keys(linhas[0]).map((h) => ({ wch: Math.min(50, Math.max(h.length, ...linhas.map((l) => String(l[h] ?? "").length)) + 2) }));
+      X.utils.book_append_sheet(wb, ws, n);
+    };
+    // resumo
+    const resumo = [];
+    for (const col of Object.values(COLS)) {
+      const itens = await store.list(col.id);
+      if (col.ordem) itens.sort(col.ordem);
+      resumo.push({ "Secção": col.id === "despesas" ? "Despesas" : col.nome, "Registos": itens.length });
+      folha(col.id === "despesas" ? "Despesas" : col.nome, itens.map((it) => {
+        const o = {};
+        col.campos.forEach((c) => { let v = it[c.k]; if (c.t === "check") v = v ? "Sim" : ""; else if (c.t === "date" && v) v = fmtData(v); o[c.l] = v ?? ""; });
+        if (it.anexos && it.anexos.length) o["Anexos"] = it.anexos.map((a) => a.nome).join(", ");
+        return o;
+      }));
+    }
+    const docs = await store.listDocs();
+    // ementas
+    const linhasE = [];
+    docs.filter((d) => /^ementa-\d{4}-\d{2}-\d{2}$/.test(d.id)).sort((a, b) => a.id.localeCompare(b.id)).forEach((d) => {
+      const ini = d.id.slice(7), sel = (d.dados && d.dados.sel) || {};
+      if (!Object.values(sel).some(Boolean)) return;
+      DIAS.forEach((dia, i) => {
+        const v = (k) => sel[i + k] || "";
+        linhasE.push({ "Semana (sábado)": fmtData(ini), "Dia": cap(dia), "Data": fmtData(somaDias(ini, i)), "Pequeno-almoço": v("P"),
+          "Meio da manhã – Ricardo": v("R"), "Meio da manhã – Carolina": v("C"), "Meio da manhã – Ema": v("E"),
+          "Almoço": v("A") + (sel[i + "AS"] ? " (+ salada)" : ""), "Meio da tarde – Ricardo": v("TR"), "Meio da tarde – Carolina": v("TC"), "Meio da tarde – Ema": v("TE"),
+          "Jantar": v("J") + (sel[i + "JS"] ? " (+ salada)" : "") });
+      });
+    });
+    folha("Ementas", linhasE);
+    resumo.push({ "Secção": "Ementas (dias)", "Registos": linhasE.length });
+    const orc = (docs.find((d) => d.id === "orcamento") || {}).dados;
+    if (orc && orc.cat) folha("Orçamento", Object.entries(orc.cat).map(([c, v]) => ({ "Categoria": c, "Limite mensal (€)": v })));
+    const ing = (docs.find((d) => d.id === "ingredientes") || {}).dados;
+    if (ing && ing.pratos) folha("Ingredientes dos pratos", Object.entries(ing.pratos).map(([p, l]) => ({ "Prato": p, "Ingredientes": l.join(", ") })));
+    const est = docs.filter((d) => d.id.startsWith("estudo-"));
+    const nomeF = {}; DISC().forEach((dd) => dd.fichas.forEach((f) => (nomeF[f.id] = dd.nome + " — " + f.titulo)));
+    folha("Estudo (notas)", est.flatMap((d) => Object.entries((d.dados && d.dados.res) || {}).map(([fid, r]) => ({ "Conta": d.id.slice(7), "Ficha": nomeF[fid] || fid, "Melhor nota": `${r.melhor}/${r.total}`, "Vezes": r.vezes, "Última vez": fmtData(r.data) }))));
+    // folha de resumo no início
+    const wsR = X.utils.json_to_sheet([{ "Secção": "Cópia de segurança de A Nossa Casa", "Registos": fmtData(hoje()) }, ...resumo]);
+    wsR["!cols"] = [{ wch: 40 }, { wch: 14 }];
+    X.utils.book_append_sheet(wb, wsR, "Resumo");
+    wb.SheetNames.unshift(wb.SheetNames.pop());
+    X.writeFile(wb, `A-Nossa-Casa-copia-${hoje()}.xlsx`);
+    // cópia completa em JSON (para restaurar, se for preciso)
+    const tudo = { versao: 1, data: hoje(), itens: {}, documentos: docs };
+    for (const col of Object.values(COLS)) tudo.itens[col.id] = await store.list(col.id);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(tudo, null, 1)], { type: "application/json" }));
+    a.download = `A-Nossa-Casa-copia-${hoje()}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    aviso("Cópia de segurança descarregada");
+  } catch (err) { erro(err); }
+}
+
 /* ---------- menu (ícones) ---------- */
 const ICO = {
   inicio: '<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
@@ -1294,11 +1367,13 @@ function abrirMais() {
   const online = store && store.modo === "online";
   dlg.innerHTML = `<div class="form folha-mais"><div class="pega" aria-hidden="true"></div><h2>Mais</h2>
     <div class="mosaico">${SECOES.filter(([r]) => !NA_BARRA.includes(r)).map(([r, l]) => `<a href="#${r}" class="tile">${svg(r)}<span>${l}</span></a>`).join("")}</div>
+    <button type="button" class="sec grande" data-a="copia">💾 Cópia de segurança (Excel)</button>
     ${online ? `<div class="acoes"><button type="button" class="sec" data-a="senha">Mudar senha</button><button type="button" class="sec" data-a="sair">Sair</button></div>` : ""}
     <button type="button" class="sec grande" data-a="fechar">Fechar</button></div>`;
   dlg.onclick = (e) => {
     if (e.target === dlg || e.target.closest("[data-a=fechar]") || e.target.closest("a.tile")) dlg.close();
     if (e.target.closest("[data-a=senha]")) { dlg.close(); dialogoSenha("Mudar senha"); }
+    if (e.target.closest("[data-a=copia]")) { dlg.close(); exportarExcel(); }
     if (e.target.closest("[data-a=sair]")) { dlg.close(); sb.auth.signOut(); }
   };
   dlg.classList.add("de-baixo");
@@ -1424,4 +1499,5 @@ async function iniciar() {
 }
 
 montarMenus();
+$("#btn-copia").onclick = exportarExcel;
 iniciar();
