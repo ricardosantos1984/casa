@@ -521,8 +521,39 @@ const ROTA_DE = { veiculos: "veiculos", tarefas: "casa", garantias: "casa", data
 
 let FOTO;
 async function fotoFamilia() {
-  if (FOTO === undefined) { const d = await store.getDoc("foto-familia"); FOTO = (d && d.img) || null; }
+  if (FOTO === undefined) { const d = await store.getDoc("foto-familia"); FOTO = d && d.img ? { x: 50, y: 35, z: 1, ...d } : null; }
   return FOTO;
+}
+const estiloFoto = (f) => `object-position:${f.x}% ${f.y}%;transform:scale(${f.z});transform-origin:${f.x}% ${f.y}%`;
+function ajustarFoto() {
+  const f = { ...FOTO };
+  const dlg = $("#dlg");
+  dlg.innerHTML = `<div class="form"><div class="pega" aria-hidden="true"></div><h2>Ajustar foto</h2>
+    <div class="heroi prev"><img class="heroi-img" alt="" src="${f.img}" style="${estiloFoto(f)}" draggable="false"></div>
+    <p class="det" style="margin:0">Arrasta a foto com o dedo para escolher a parte que aparece.</p>
+    <label class="campo"><span>Zoom</span><input type="range" id="f-zoom" min="1" max="2.5" step="0.05" value="${f.z}"></label>
+    <div class="acoes"><button type="button" class="sec" data-a="repor">Repor</button><span class="esp"></span><button type="button" class="sec" data-a="fechar">Cancelar</button><button type="button" class="pri" data-a="guardar">Guardar</button></div></div>`;
+  const prev = $(".prev", dlg), img = $("img", prev), zoom = $("#f-zoom", dlg);
+  const aplicar = () => { img.style.cssText = estiloFoto(f); };
+  const lim = (v) => Math.max(0, Math.min(100, v));
+  let ini = null;
+  prev.onpointerdown = (e) => { ini = { px: e.clientX, py: e.clientY, x: f.x, y: f.y }; prev.setPointerCapture(e.pointerId); };
+  prev.onpointermove = (e) => {
+    if (!ini) return;
+    const r = prev.getBoundingClientRect(), k = 160 / f.z;
+    f.x = lim(ini.x - ((e.clientX - ini.px) / r.width) * k);
+    f.y = lim(ini.y - ((e.clientY - ini.py) / r.height) * k);
+    aplicar();
+  };
+  prev.onpointerup = prev.onpointercancel = () => { ini = null; };
+  zoom.oninput = () => { f.z = +zoom.value; aplicar(); };
+  $("[data-a=repor]", dlg).onclick = () => { f.x = 50; f.y = 35; f.z = 1; zoom.value = 1; aplicar(); };
+  $("[data-a=fechar]", dlg).onclick = () => dlg.close();
+  $("[data-a=guardar]", dlg).onclick = async () => {
+    try { await store.setDoc("foto-familia", { img: f.img, x: Math.round(f.x), y: Math.round(f.y), z: f.z }); FOTO = f; dlg.close(); aviso("Foto ajustada"); render(); }
+    catch (err) { erro(err); }
+  };
+  dlg.showModal();
 }
 function reduzirImagem(file, max = 1400) {
   return new Promise((res, rej) => {
@@ -563,8 +594,10 @@ async function vInicio(el) {
   const refeicao = (lbl, html, sal) => `<div class="ref-linha"><span class="ref-l">${lbl}</span><span class="ref-t">${html}${sal ? ` <span class="tag">+ salada</span>` : ""}</span></div>`;
   const nada = !Object.keys(sel).some((k) => k.startsWith(String(idx)) && sel[k]);
 
-  el.innerHTML = `<div class="heroi ${foto ? "" : "sem-foto"}" ${foto ? `style="background-image:url('${foto}')"` : ""}>
-    <label class="foto-btn">${svg("camara")}<span>${foto ? "Mudar foto" : "Pôr foto da família"}</span><input type="file" accept="image/*" id="foto-inp" hidden></label>
+  el.innerHTML = `<div class="heroi ${foto ? "" : "sem-foto"}">
+    ${foto ? `<img class="heroi-img" alt="A família" src="${foto.img}" style="${estiloFoto(foto)}">` : ""}
+    <div class="foto-btns">${foto ? `<button type="button" class="foto-btn" id="foto-aj">${svg("mover")}<span>Ajustar</span></button>` : ""}
+    <label class="foto-btn">${svg("camara")}<span>${foto ? "Mudar" : "Pôr foto da família"}</span><input type="file" accept="image/*" id="foto-inp" hidden></label></div>
     <div class="heroi-txt"><h1>${EU ? "Olá, " + esc(EU) : "Olá!"}</h1><div class="sub2">${esc(cap(dataLonga))}</div></div>
   </div>
   <a class="hoje" href="#ementas">
@@ -587,9 +620,10 @@ async function vInicio(el) {
   $("#foto-inp", el).onchange = async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
     aviso("A guardar a foto…");
-    try { const img = await reduzirImagem(f); await store.setDoc("foto-familia", { img }); FOTO = img; aviso("Foto guardada"); render(); }
+    try { const img = await reduzirImagem(f); const nova = { img, x: 50, y: 35, z: 1 }; await store.setDoc("foto-familia", nova); FOTO = nova; aviso("Foto guardada"); await render(); ajustarFoto(); }
     catch (err) { erro(err); }
   };
+  const aj = $("#foto-aj", el); if (aj) aj.onclick = ajustarFoto;
 }
 
 /* =====================================================================
@@ -868,6 +902,7 @@ const ICO = {
   casa: '<path d="M14.5 5.5a4 4 0 0 0 5 5l-8.8 8.8a2.1 2.1 0 0 1-3-3l8.8-8.8z"/><path d="M14.5 5.5l2-2 4 4-2 2"/>',
   familia: '<circle cx="9" cy="8" r="3"/><path d="M3.5 20c0-3.2 2.5-5.5 5.5-5.5s5.5 2.3 5.5 5.5"/><circle cx="17" cy="9.5" r="2.3"/><path d="M16.5 14.6c2.6.2 4.4 2.3 4.4 5.4"/>',
   medicos: '<path d="M12 20.5s-8-4.8-8-10.8A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.7c0 6-8 10.8-8 10.8z"/><path d="M8 12h2l1.2-2 1.6 4 1.2-2h2"/>',
+  mover: '<path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/>',
   camara: '<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.5-2.5h5.6L16.3 7h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.8" r="3.3"/>',
   viagens: '<rect x="3.5" y="7" width="17" height="13" rx="2.5"/><path d="M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2M8 7v13M16 7v13"/>',
   calendario: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
