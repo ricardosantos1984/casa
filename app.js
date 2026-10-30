@@ -273,6 +273,122 @@ const COLS = {
     detalhe: (d) => [junta(d.esp, d.local, d.quem), d.tel ? `<a href="tel:${esc(d.tel.replace(/\s/g, ""))}">📞 ${esc(d.tel)}</a>` : ""].filter(Boolean).join(" · "),
     ordem: (a, b) => String(a.nome).localeCompare(String(b.nome)),
   },
+  escola_testes: {
+    ico: (d) => (d.tipo === "Teste" ? "doc" : "escola"),
+    id: "escola_testes", nome: "Testes e trabalhos", item: "teste / trabalho",
+    campos: [
+      { k: "disciplina", l: "Disciplina", t: "text", req: 1 },
+      { k: "tipo", l: "Tipo", t: "select", o: ["Teste", "Trabalho", "TPC", "Ficha", "Apresentação", "Outro"], def: "Teste" },
+      { k: "data", l: "Data", t: "date", req: 1 },
+      { k: "materia", l: "Matéria", t: "text" },
+      { k: "nota", l: "Nota / resultado", t: "text" },
+      { k: "notas", l: "Notas", t: "textarea" },
+    ],
+    titulo: (d) => `${d.tipo || "Teste"} de ${d.disciplina}`,
+    detalhe: (d) => junta(fmtData(d.data), d.materia, d.nota ? "nota: " + d.nota : ""),
+    alertas: (d) => { if (!d.data || d.nota) return []; const n = diasAte(d.data); return n >= 0 && n <= 14 ? [{ nivel: n <= 2 ? "laranja" : "azul", dias: n, texto: rel(n) }] : []; },
+    ordem: (a, b) => { const fa = diasAte(a.data) >= 0, fb = diasAte(b.data) >= 0; if (fa !== fb) return fa ? -1 : 1; return fa ? String(a.data).localeCompare(String(b.data)) : String(b.data).localeCompare(String(a.data)); },
+    vazio: "Sem testes ou trabalhos registados.",
+  },
+  escola_eventos: {
+    ico: "calendario",
+    id: "escola_eventos", nome: "Reuniões, visitas e férias", item: "evento da escola",
+    campos: [
+      { k: "desc", l: "O quê (ex: reunião de pais, visita de estudo)", t: "text", req: 1 },
+      { k: "tipo", l: "Tipo", t: "select", o: ["Reunião", "Visita de estudo", "Festa", "Férias / interrupção", "Pagamento", "Outro"] },
+      { k: "data", l: "Data", t: "date", req: 1 },
+      { k: "fim", l: "Até (se durar vários dias)", t: "date" },
+      { k: "hora", l: "Hora", t: "time" },
+      { k: "notas", l: "Notas (levar, pagar, autorizar…)", t: "textarea" },
+    ],
+    titulo: (d) => d.desc,
+    detalhe: (d) => junta(d.tipo, fmtData(d.data) + (d.fim ? " a " + fmtData(d.fim) : "") + (d.hora ? " às " + d.hora : "")),
+    alertas: (d) => { if (!d.data) return []; const n = diasAte(d.data); return n >= 0 && n <= 14 ? [{ nivel: n <= 2 ? "laranja" : "azul", dias: n, texto: rel(n) }] : []; },
+    ordem: (a, b) => { const fa = diasAte(a.fim || a.data) >= 0, fb = diasAte(b.fim || b.data) >= 0; if (fa !== fb) return fa ? -1 : 1; return fa ? String(a.data).localeCompare(String(b.data)) : String(b.data).localeCompare(String(a.data)); },
+  },
+  escola_atividades: {
+    ico: "lazer",
+    id: "escola_atividades", nome: "Horário e atividades", item: "atividade",
+    campos: [
+      { k: "nome", l: "Atividade ou aula (ex: Natação, Inglês)", t: "text", req: 1 },
+      { k: "dias", l: "Dias (ex: terça e quinta)", t: "text" },
+      { k: "hora", l: "Hora", t: "text" },
+      { k: "local", l: "Local", t: "text" },
+      { k: "quem_leva", l: "Quem leva / vai buscar", t: "text" },
+      { k: "notas", l: "Notas (material, mensalidade…)", t: "textarea" },
+    ],
+    titulo: (d) => d.nome,
+    detalhe: (d) => junta(d.dias, d.hora, d.local, d.quem_leva ? "leva: " + d.quem_leva : ""),
+    ordem: (a, b) => String(a.nome).localeCompare(String(b.nome)),
+  },
+  escola_contactos: {
+    ico: "tel",
+    id: "escola_contactos", nome: "Professores e contactos", item: "contacto",
+    campos: [
+      { k: "nome", l: "Nome", t: "text", req: 1 },
+      { k: "papel", l: "Função (ex: diretora de turma, professor de Matemática)", t: "text" },
+      { k: "tel", l: "Telefone", t: "tel" },
+      { k: "email", l: "Email", t: "email" },
+      { k: "notas", l: "Notas (horário de atendimento…)", t: "textarea" },
+    ],
+    titulo: (d) => d.nome,
+    detalhe: (d) => [junta(d.papel), d.tel ? `<a href="tel:${esc(d.tel.replace(/\s/g, ""))}">📞 ${esc(d.tel)}</a>` : "", d.email ? `<a href="mailto:${esc(d.email)}">✉️ ${esc(d.email)}</a>` : ""].filter(Boolean).join(" · "),
+    ordem: (a, b) => String(a.nome).localeCompare(String(b.nome)),
+  },
+  viagens: {
+    ico: "viagens",
+    id: "viagens", nome: "Viagens", item: "viagem",
+    campos: [
+      { k: "destino", l: "Destino", t: "text", req: 1 },
+      { k: "estado", l: "Estado", t: "select", o: ["Ideia", "A planear", "Reservada", "Feita"], def: "Ideia" },
+      { k: "ida", l: "Ida", t: "date" },
+      { k: "volta", l: "Volta", t: "date" },
+      { k: "quem", l: "Quem vai", t: "text", def: () => PESSOAS.join(", ") },
+      { k: "transporte", l: "Transporte (avião, carro…)", t: "text" },
+      { k: "alojamento", l: "Alojamento", t: "text" },
+      { k: "orcamento", l: "Orçamento (€)", t: "money" },
+      { k: "notas", l: "Notas e ideias (o que ver, onde comer…)", t: "textarea" },
+    ],
+    titulo: (d) => d.destino,
+    detalhe: (d) => junta(d.estado, d.ida ? fmtData(d.ida) + (d.volta ? " a " + fmtData(d.volta) : "") : "", d.transporte, d.alojamento),
+    valor: (d) => (d.orcamento ? euro(d.orcamento) : ""),
+    alertas: (d) => { if (!d.ida || d.estado === "Feita") return []; const n = diasAte(d.ida); if (n < 0) return d.volta && diasAte(d.volta) >= 0 ? [{ nivel: "azul", dias: 0, texto: "Boa viagem! 🌍" }] : []; return n <= 30 ? [{ nivel: n <= 3 ? "laranja" : "azul", dias: n, texto: "Partida " + rel(n) }] : []; },
+    ordem: (a, b) => { const f = (d) => (d.estado === "Feita" ? "z" : "a") + (d.ida || "9"); return f(a).localeCompare(f(b)); },
+    vazio: "Ainda não há viagens. Adiciona um destino, mesmo que seja só uma ideia.",
+  },
+  reservas: {
+    ico: (d) => ({ "Voo": "viagens", "Alojamento": "inicio", "Carro": "veiculos", "Seguro": "escudo" })[d.tipo] || "doc",
+    id: "reservas", nome: "Reservas e bilhetes", item: "reserva",
+    campos: [
+      { k: "viagem", l: "Viagem", t: "select", o: async () => (await store.list("viagens")).map((v) => v.destino) },
+      { k: "tipo", l: "Tipo", t: "select", o: ["Voo", "Alojamento", "Carro", "Comboio / autocarro", "Bilhetes", "Seguro", "Outro"] },
+      { k: "desc", l: "Descrição (ex: TAP Lisboa → Paris)", t: "text", req: 1 },
+      { k: "data", l: "Data", t: "date" },
+      { k: "hora", l: "Hora", t: "time" },
+      { k: "ref", l: "Referência da reserva", t: "text" },
+      { k: "valor", l: "Valor (€)", t: "money" },
+      { k: "pago", l: "Já pago", t: "check" },
+      { k: "notas", l: "Notas", t: "textarea" },
+    ],
+    titulo: (d) => d.desc,
+    detalhe: (d) => junta(d.viagem, d.tipo, d.data ? fmtData(d.data) + (d.hora ? " " + d.hora : "") : "", d.ref ? "ref. " + d.ref : "", d.valor ? (d.pago ? "pago" : "por pagar") : ""),
+    valor: (d) => (d.valor ? euro(d.valor) : ""),
+    ordem: (a, b) => String(a.data || "9").localeCompare(String(b.data || "9")),
+  },
+  mala: {
+    ico: (d) => (d.levado ? "escudo" : "viagens"),
+    id: "mala", nome: "Lista para a mala", item: "artigo da mala",
+    campos: [
+      { k: "item", l: "Artigo", t: "text", req: 1 },
+      { k: "viagem", l: "Viagem", t: "select", o: async () => (await store.list("viagens")).map((v) => v.destino) },
+      { k: "pessoa", l: "De quem", t: "select", o: () => [...PESSOAS, "Todos"] },
+      { k: "levado", l: "Já está na mala", t: "check" },
+    ],
+    titulo: (d) => (d.levado ? "✓ " : "") + d.item,
+    detalhe: (d) => junta(d.viagem, d.pessoa),
+    ordem: (a, b) => (a.levado === b.levado ? String(a.item).localeCompare(String(b.item)) : a.levado ? 1 : -1),
+    acao: { l: (d) => (d.levado ? "Tirar" : "Na mala ✓"), fn: async (d) => { await store.update(d.id, { ...semId(d), levado: !d.levado }); } },
+  },
   saude: {
     ico: "pilula",
     id: "saude", nome: "Vacinas, análises e medicação", item: "registo",
@@ -301,7 +417,7 @@ function cartao(col, it) {
     <div class="ct"><div class="tit">${esc(col.titulo(it))}</div>${col.detalhe ? `<div class="det">${col.detalhe(it)}</div>` : ""}
     ${al.map((a) => `<span class="al ${a.nivel}">${esc(a.texto)}</span>`).join("")}</div>
     ${col.valor ? `<div class="val">${esc(col.valor(it))}</div>` : ""}
-    ${col.acao ? `<button class="sec peq" data-acao="${esc(it.id)}">${col.acao.l}</button>` : ""}
+    ${col.acao ? `<button class="sec peq" data-acao="${esc(it.id)}">${typeof col.acao.l === "function" ? col.acao.l(it) : col.acao.l}</button>` : ""}
   </div>`;
 }
 
@@ -357,7 +473,7 @@ function campoHtml(c, v) {
 function lerForm(f, campos) {
   const d = {};
   campos.forEach((c) => {
-    const el = f.elements[c.k];
+    const el = f.elements.namedItem(c.k);
     if (c.t === "check") d[c.k] = el.checked;
     else if (c.t === "money" || c.t === "number") { const v = el.value.trim().replace(/\s/g, "").replace(",", "."); d[c.k] = v === "" || isNaN(+v) ? null : +v; }
     else d[c.k] = el.value.trim();
@@ -380,7 +496,7 @@ async function abrirForm(col, it) {
     e.preventDefault();
     const d = lerForm(f, campos);
     const falta = campos.find((c) => c.req && (d[c.k] === "" || d[c.k] == null));
-    if (falta) { $(".msg", f).textContent = `Preenche "${falta.l}".`; f.elements[falta.k].focus(); return; }
+    if (falta) { $(".msg", f).textContent = `Preenche "${falta.l}".`; f.elements.namedItem(falta.k).focus(); return; }
     try {
       if (it) await store.update(it.id, { ...semId(it), ...d }); else await store.add(col.id, d);
       dlg.close(); aviso("Gravado"); render();
@@ -401,12 +517,33 @@ const cab = (titulo, sub) => `<div class="cab"><div><h1>${titulo}</h1>${sub ? `<
 /* =====================================================================
    INÍCIO
    ===================================================================== */
-const ROTA_DE = { veiculos: "veiculos", tarefas: "casa", garantias: "casa", datas: "familia", documentos: "familia", consultas: "medicos" };
+const ROTA_DE = { veiculos: "veiculos", tarefas: "casa", garantias: "casa", datas: "familia", documentos: "familia", escola_testes: "escola", escola_eventos: "escola", viagens: "viagens", consultas: "medicos" };
+
+let FOTO;
+async function fotoFamilia() {
+  if (FOTO === undefined) { const d = await store.getDoc("foto-familia"); FOTO = (d && d.img) || null; }
+  return FOTO;
+}
+function reduzirImagem(file, max = 1400) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const r = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      res(c.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = () => rej(new Error("Não foi possível abrir esta imagem"));
+    img.src = URL.createObjectURL(file);
+  });
+}
 
 async function vInicio(el) {
   const ini = sabadoDe(hoje()), idx = Math.round((deIso(hoje()) - deIso(ini)) / 86400000);
   const ids = Object.keys(ROTA_DE);
-  const [docE, compras, despesas, ...listas] = await Promise.all([store.getDoc("ementa-" + ini), store.list("compras"), store.list("despesas"), ...ids.map((i) => store.list(i))]);
+  const [foto, docE, compras, despesas, ...listas] = await Promise.all([fotoFamilia(), store.getDoc("ementa-" + ini), store.list("compras"), store.list("despesas"), ...ids.map((i) => store.list(i))]);
   const sel = (docE && docE.sel) || {};
   const alertas = [];
   ids.forEach((cid, n) => { if (cid === "consultas") return; listas[n].forEach((it) => (COLS[cid].alertas(it) || []).forEach((a) => alertas.push({ ...a, rota: ROTA_DE[cid], tit: COLS[cid].titulo(it), ico: typeof COLS[cid].ico === "function" ? COLS[cid].ico(it) : COLS[cid].ico }))); });
@@ -425,7 +562,10 @@ async function vInicio(el) {
   const refeicao = (lbl, html, sal) => `<div class="ref-linha"><span class="ref-l">${lbl}</span><span class="ref-t">${html}${sal ? ` <span class="tag">+ salada</span>` : ""}</span></div>`;
   const nada = !Object.keys(sel).some((k) => k.startsWith(String(idx)) && sel[k]);
 
-  el.innerHTML = `${cab(EU ? "Olá, " + esc(EU) : "Olá!", cap(dataLonga))}
+  el.innerHTML = `<div class="heroi ${foto ? "" : "sem-foto"}" ${foto ? `style="background-image:url('${foto}')"` : ""}>
+    <label class="foto-btn">${svg("camara")}<span>${foto ? "Mudar foto" : "Pôr foto da família"}</span><input type="file" accept="image/*" id="foto-inp" hidden></label>
+    <div class="heroi-txt"><h1>${EU ? "Olá, " + esc(EU) : "Olá!"}</h1><div class="sub2">${esc(cap(dataLonga))}</div></div>
+  </div>
   <a class="hoje" href="#ementas">
     <div class="hoje-cab"><span class="bolha">${svg("ementas")}</span><h2>Hoje na ementa</h2><span class="seta">›</span></div>
     ${nada ? `<p class="vazio">Ainda não há nada escolhido para hoje. Toca para escolher.</p>` :
@@ -443,6 +583,12 @@ async function vInicio(el) {
     ${alertas.length ? alertas.map((a) => `<a class="linha-l" href="#${a.rota}"><span class="bolha ${a.nivel}">${svg(a.ico || "calendario")}</span><span class="ct"><b>${esc(a.tit)}</b><span class="det">${esc(a.texto)}</span></span></a>`).join("") : `<p class="vazio">Nada urgente. 👍</p>`}
   </section>
   ${falta.length ? `<section class="seccao"><div class="sec-cab"><h2>Lista de compras</h2><a class="ver" href="#compras">Abrir</a></div><p class="chips">${falta.slice(0, 12).map((c) => `<span class="chip">${esc(c.nome)}</span>`).join("")}${falta.length > 12 ? `<span class="chip">+${falta.length - 12}</span>` : ""}</p></section>` : ""}`;
+  $("#foto-inp", el).onchange = async (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    aviso("A guardar a foto…");
+    try { const img = await reduzirImagem(f); await store.setDoc("foto-familia", { img }); FOTO = img; aviso("Foto guardada"); render(); }
+    catch (err) { erro(err); }
+  };
 }
 
 /* =====================================================================
@@ -644,6 +790,21 @@ async function vFamilia(el) {
   await seccao(el, COLS.documentos);
 }
 
+async function vEscola(el) {
+  el.innerHTML = cab("Escola Ema", "Testes, trabalhos, reuniões, atividades e contactos da escola.");
+  await seccao(el, COLS.escola_testes);
+  await seccao(el, COLS.escola_eventos);
+  await seccao(el, COLS.escola_atividades);
+  await seccao(el, COLS.escola_contactos);
+}
+
+async function vViagens(el) {
+  el.innerHTML = cab("Viagens", "Ideias, viagens marcadas, reservas e a lista para a mala.");
+  await seccao(el, COLS.viagens);
+  await seccao(el, COLS.reservas);
+  await seccao(el, COLS.mala);
+}
+
 async function vMedicos(el) {
   el.innerHTML = cab("Médicos", "Consultas, contactos e registos de saúde de cada pessoa.");
   await seccao(el, COLS.consultas);
@@ -662,6 +823,8 @@ const ICO = {
   casa: '<path d="M14.5 5.5a4 4 0 0 0 5 5l-8.8 8.8a2.1 2.1 0 0 1-3-3l8.8-8.8z"/><path d="M14.5 5.5l2-2 4 4-2 2"/>',
   familia: '<circle cx="9" cy="8" r="3"/><path d="M3.5 20c0-3.2 2.5-5.5 5.5-5.5s5.5 2.3 5.5 5.5"/><circle cx="17" cy="9.5" r="2.3"/><path d="M16.5 14.6c2.6.2 4.4 2.3 4.4 5.4"/>',
   medicos: '<path d="M12 20.5s-8-4.8-8-10.8A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.7c0 6-8 10.8-8 10.8z"/><path d="M8 12h2l1.2-2 1.6 4 1.2-2h2"/>',
+  camara: '<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.5-2.5h5.6L16.3 7h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.8" r="3.3"/>',
+  viagens: '<rect x="3.5" y="7" width="17" height="13" rx="2.5"/><path d="M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2M8 7v13M16 7v13"/>',
   calendario: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   doc: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
   tel: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
@@ -677,7 +840,7 @@ const ICO = {
   euro: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.8a4 4 0 1 0 0 6.4M7.5 11h6M7.5 13.5h6"/>',
   mais: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
 };
-const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["medicos", "Médicos"]];
+const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["escola", "Escola Ema"], ["viagens", "Viagens"], ["medicos", "Médicos"]];
 const svg = (k) => `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]}</svg>`;
 const NA_BARRA = ["inicio", "ementas", "compras", "despesas"];
 function montarMenus() {
@@ -706,7 +869,7 @@ function abrirMais() {
 /* =====================================================================
    NAVEGAÇÃO
    ===================================================================== */
-const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, medicos: vMedicos };
+const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, viagens: vViagens, medicos: vMedicos };
 async function render() {
   if (!store) return;
   const h = location.hash.slice(1), rota = ROTAS[h] ? h : "inicio";
@@ -733,7 +896,7 @@ function mostrarApp(estado) {
   render();
 }
 function mostrarLogin(msg, ok) {
-  store = null;
+  store = null; FOTO = undefined;
   $("#app").hidden = true; $("#login").hidden = false;
   const m = $("#login-msg"); m.textContent = msg || ""; m.classList.toggle("ok", !!ok);
 }

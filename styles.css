@@ -111,6 +111,14 @@ input[type=checkbox]:checked::after{content:"";width:6px;height:12px;border:soli
 .erro{color:var(--vermelho);font-weight:600}
 
 /* ---------- início ---------- */
+.heroi{position:relative;min-height:230px;border-radius:var(--raio-g);overflow:hidden;background:#1E2B47 center 30%/cover no-repeat;display:flex;flex-direction:column;justify-content:flex-end;padding:16px}
+.heroi::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,22,38,0) 35%,rgba(14,22,38,.88) 100%)}
+.heroi.sem-foto{min-height:150px;background:linear-gradient(135deg,#1E3D73,#16213A)}
+.heroi.sem-foto::before{display:none}
+.heroi-txt{position:relative;color:#fff}
+.heroi-txt .sub2{color:rgba(255,255,255,.82);margin-top:4px;font-size:15px}
+.foto-btn{position:absolute;top:12px;right:12px;z-index:1;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(14,22,38,.55);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;font-size:14px;font-weight:700;cursor:pointer}
+.foto-btn svg{width:18px;height:18px}
 .hoje{display:block;background:var(--painel);border-radius:var(--raio-g);padding:14px;text-decoration:none;color:inherit;box-shadow:var(--sombra)}
 .hoje-cab{display:flex;align-items:center;gap:12px;margin-bottom:6px}
 .hoje-cab h2{flex:1}
@@ -179,6 +187,7 @@ dialog::backdrop{background:rgba(3,8,18,.6);-webkit-backdrop-filter:blur(4px);ba
 .folha-mais h2{font-size:24px}
 .pega{display:none}
 .mosaico{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mosaico .tile:last-child:nth-child(odd){grid-column:1/-1}
 .tile{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:var(--raio-g);background:var(--painel2);color:var(--texto);text-decoration:none;font-weight:700;font-size:17px}
 .tile svg{width:30px;height:30px;color:var(--acento)}
 .tile:active{transform:scale(.98)}
