@@ -1,30 +1,18 @@
 /* =====================================================================
-   A Nossa Casa — tema automático (claro / escuro), destaque azul
+   A Nossa Casa — tema escuro azul-noite
    ===================================================================== */
 :root{
-  color-scheme:light dark;
-  --fundo:#F2F3F7; --painel:#FFFFFF; --painel2:#F4F5F8; --hover:#EBEDF2; --linha:#E2E4EA;
-  --texto:#121418; --suave:#5B616D; --fraco:#8B919C;
-  --acento:#0A66E8; --acento-txt:#FFFFFF; --acento-f:rgba(10,102,232,.10);
-  --vermelho:#D2332A; --vermelho-f:rgba(210,51,42,.10);
-  --laranja:#B95E00; --laranja-f:rgba(230,128,20,.13);
-  --amarelo:#8C7000; --amarelo-f:rgba(230,190,20,.18);
-  --azul:#0A66E8; --azul-f:rgba(10,102,232,.10);
-  --vidro:rgba(255,255,255,.85); --sombra:0 1px 2px rgba(16,24,40,.05);
+  color-scheme:dark;
+  --fundo:#0E1626; --painel:#16213A; --painel2:#1E2B47; --hover:#263654; --linha:#2B3B5C;
+  --texto:#EEF2F9; --suave:#A5B1C8; --fraco:#7381A0;
+  --acento:#4C9BFF; --acento-txt:#061A33; --acento-f:rgba(76,155,255,.16);
+  --vermelho:#FF7A6E; --vermelho-f:rgba(255,122,110,.16);
+  --laranja:#FFB45E; --laranja-f:rgba(255,180,94,.16);
+  --amarelo:#F2DC5D; --amarelo-f:rgba(242,220,93,.15);
+  --azul:#4C9BFF; --azul-f:rgba(76,155,255,.16);
+  --vidro:rgba(14,22,38,.86); --sombra:none;
   --raio:14px; --raio-g:20px;
   --barra:calc(70px + env(safe-area-inset-bottom));
-}
-@media (prefers-color-scheme:dark){
-  :root{
-    --fundo:#1d1d1d; --painel:#272727; --painel2:#313131; --hover:#383838; --linha:#3b3b3b;
-    --texto:#F4F4F2; --suave:#AEAEA9; --fraco:#7f7f7b;
-    --acento:#5AA8FF; --acento-txt:#04203F; --acento-f:rgba(90,168,255,.14);
-    --vermelho:#FF7A6E; --vermelho-f:rgba(255,122,110,.15);
-    --laranja:#FFB45E; --laranja-f:rgba(255,180,94,.15);
-    --amarelo:#F2DC5D; --amarelo-f:rgba(242,220,93,.14);
-    --azul:#5AA8FF; --azul-f:rgba(90,168,255,.15);
-    --vidro:rgba(29,29,29,.86); --sombra:none;
-  }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0}
@@ -185,7 +173,7 @@ details[open] summary::before{content:"– "}
 
 /* ---------- janelas ---------- */
 dialog{border:none;border-radius:var(--raio-g);padding:0;width:min(560px,94vw);max-height:90vh;background:var(--painel);color:var(--texto);box-shadow:0 30px 80px rgba(0,0,0,.35)}
-dialog::backdrop{background:rgba(0,0,0,.45);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+dialog::backdrop{background:rgba(3,8,18,.6);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 .form{display:flex;flex-direction:column;gap:12px;padding:20px}
 .acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .folha-mais h2{font-size:24px}
