@@ -520,12 +520,17 @@ const cab = (titulo, sub) => `<div class="cab"><div><h1>${titulo}</h1>${sub ? `<
 const ROTA_DE = { veiculos: "veiculos", tarefas: "casa", garantias: "casa", datas: "familia", documentos: "familia", escola_testes: "escola", escola_eventos: "escola", viagens: "viagens", consultas: "medicos" };
 
 let FOTO;
+const chaveFoto = () => "foto-" + (EU || "eu").toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g, "");
 async function fotoFamilia() {
-  if (FOTO === undefined) { const d = await store.getDoc("foto-familia"); FOTO = d && d.img ? { x: 50, y: 35, z: 1, ...d } : null; }
+  if (FOTO === undefined) {
+    let d = await store.getDoc(chaveFoto());
+    if (!d || !d.img) d = await store.getDoc("foto-familia");
+    FOTO = d && d.img ? { x: 50, y: 35, z: 1, ...d } : null;
+  }
   return FOTO;
 }
 const estiloFoto = (f) => `object-position:${f.x}% ${f.y}%;transform:scale(${f.z});transform-origin:${f.x}% ${f.y}%`;
-const avatarHtml = (f, cls = "") => f ? `<span class="avatar ${cls}"><img alt="A família" src="${f.img}" style="${estiloFoto(f)}" draggable="false"></span>` : "";
+const avatarHtml = (f, cls = "") => f ? `<span class="avatar ${cls}"><img alt="Foto de perfil" src="${f.img}" style="${estiloFoto(f)}" draggable="false"></span>` : "";
 function atualizarLogo() {
   const m = $(".marca-ico");
   if (!m) return;
@@ -536,13 +541,13 @@ async function novaFoto(file) {
   aviso("A guardar a foto…");
   const img = await reduzirImagem(file, 900);
   const nova = { img, x: 50, y: 35, z: 1 };
-  await store.setDoc("foto-familia", nova);
+  await store.setDoc(chaveFoto(), nova);
   FOTO = nova; atualizarLogo(); aviso("Foto guardada");
 }
 function ajustarFoto() {
   const f = { ...FOTO };
   const dlg = $("#dlg");
-  dlg.innerHTML = `<div class="form"><div class="pega" aria-hidden="true"></div><h2>Foto de perfil da família</h2>
+  dlg.innerHTML = `<div class="form"><div class="pega" aria-hidden="true"></div><h2>A tua foto de perfil</h2>
     <div class="prev-av"><div class="avatar prev">${avatarHtml(f).replace(/^<span class="avatar ">|<\/span>$/g, "")}</div></div>
     <p class="det" style="margin:0;text-align:center">Arrasta a foto com o dedo para a centrar no círculo.</p>
     <label class="campo"><span>Zoom</span><input type="range" id="f-zoom" min="1" max="3" step="0.05" value="${f.z}"></label>
@@ -569,7 +574,7 @@ function ajustarFoto() {
   };
   $("[data-a=fechar]", dlg).onclick = () => dlg.close();
   $("[data-a=guardar]", dlg).onclick = async () => {
-    try { await store.setDoc("foto-familia", { img: f.img, x: Math.round(f.x), y: Math.round(f.y), z: f.z }); FOTO = f; dlg.close(); atualizarLogo(); aviso("Foto guardada"); render(); }
+    try { await store.setDoc(chaveFoto(), { img: f.img, x: Math.round(f.x), y: Math.round(f.y), z: f.z }); FOTO = f; dlg.close(); atualizarLogo(); aviso("Foto guardada"); render(); }
     catch (err) { erro(err); }
   };
   aplicar();
@@ -615,9 +620,9 @@ async function vInicio(el) {
   const nada = !Object.keys(sel).some((k) => k.startsWith(String(idx)) && sel[k]);
 
   el.innerHTML = `<div class="perfil">
-    ${foto ? `<button type="button" class="av-btn" id="foto-aj" aria-label="Mudar ou ajustar a foto da família">${avatarHtml(foto, "grande")}<span class="av-edit">${svg("camara")}</span></button>`
-      : `<label class="av-btn vazio-av" aria-label="Pôr foto da família"><span class="avatar grande">${svg("camara")}</span><input type="file" accept="image/*" id="foto-inp" hidden></label>`}
-    <div><h1>${EU ? "Olá, " + esc(EU) : "Olá!"}</h1><div class="sub2">${esc(cap(dataLonga))}</div>${foto ? "" : `<div class="det">Toca no círculo para pôr a foto da família.</div>`}</div>
+    ${foto ? `<button type="button" class="av-btn" id="foto-aj" aria-label="Mudar ou ajustar a tua foto de perfil">${avatarHtml(foto, "grande")}<span class="av-edit">${svg("camara")}</span></button>`
+      : `<label class="av-btn vazio-av" aria-label="Pôr a tua foto de perfil"><span class="avatar grande">${svg("camara")}</span><input type="file" accept="image/*" id="foto-inp" hidden></label>`}
+    <div><h1>${EU ? "Olá, " + esc(EU) : "Olá!"}</h1><div class="sub2">${esc(cap(dataLonga))}</div>${foto ? "" : `<div class="det">Toca no círculo para pores a tua foto.</div>`}</div>
   </div>
   <a class="hoje" href="#ementas">
     <div class="hoje-cab"><span class="bolha">${svg("ementas")}</span><h2>Hoje na ementa</h2><span class="seta">›</span></div>
