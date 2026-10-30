@@ -219,6 +219,15 @@ a.mini:hover{background:var(--hover)}
 
 .linha-l.sem-borda{flex:1;border:none;padding:0;min-width:0}
 
+.tar{display:flex;flex-direction:column;gap:6px;padding:8px 0;border-top:1px solid var(--linha)}
+.grupo .tar:first-of-type{border-top:none}
+.tar-n{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.tar-d{display:flex;gap:5px;flex-wrap:wrap}
+.dia-chk{min-width:44px;min-height:44px;padding:0 8px;border-radius:12px;border:1.5px solid var(--linha);background:var(--painel2);color:var(--suave);font-weight:700;font-size:13px}
+.dia-chk.hoje{border-color:var(--acento)}
+.dia-chk.on{background:#4CD08A;border-color:#4CD08A;color:#08311B}
+.pri:disabled{opacity:.5;cursor:default}
+
 /* anexos */
 .anexos{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:var(--raio);background:var(--painel2);border:1px dashed var(--linha)}
 .anx-cab{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;font-weight:700;color:var(--suave)}

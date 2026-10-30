@@ -114,6 +114,7 @@ const PERIODO = { "Mensal": 1, "Bimestral": 2, "Trimestral": 3, "Semestral": 6, 
 const junta = (...p) => p.filter(Boolean).map(esc).join(" · ");
 
 const CAT_ICO = { "Supermercado": "compras", "Casa": "inicio", "Contas (luz, água, gás, net)": "raio", "Carro": "veiculos", "Combustível": "combustivel", "Saúde": "medicos", "Escola": "escola", "Roupa": "roupa", "Lazer": "lazer", "Restaurantes": "ementas", "Presentes": "presente" };
+const UNID = { "Luz": "kWh", "Água": "m³", "Gás": "m³" };
 const COLS = {
   compras: {
     ico: "compras",
@@ -473,6 +474,90 @@ const COLS = {
     acao: { l: (d) => (d.feita ? "Por fazer" : "Feita ✓"), fn: async (d) => { await store.update(d.id, { ...semId(d), feita: !d.feita }); } },
     vazio: "Carrega aqui fichas da escola ou da internet (PDF, foto ou Word) para a Ema fazer.",
   },
+  tarefas_familia: {
+    ico: "tarefas",
+    id: "tarefas_familia", nome: "Lista de tarefas", item: "tarefa",
+    campos: [
+      { k: "tarefa", l: "Tarefa (ex: pôr a mesa, arrumar o quarto)", t: "text", req: 1 },
+      { k: "quem", l: "Quem", t: "select", o: () => [...PESSOAS, "Todos"], req: 1, def: "Ema" },
+      { k: "freq", l: "Quando", t: "select", o: ["Todos os dias", "Dias úteis (seg–sex)", "Fins de semana", "Uma vez por semana"], def: "Todos os dias" },
+      { k: "pontos", l: "Pontos de cada vez", t: "number", def: 1 },
+      { k: "notas", l: "Notas", t: "textarea" },
+    ],
+    titulo: (d) => d.tarefa,
+    detalhe: (d) => junta(d.quem, d.freq, (d.pontos || 1) + ((d.pontos || 1) === 1 ? " ponto" : " pontos")),
+    ordem: (a, b) => String(a.quem + a.tarefa).localeCompare(String(b.quem + b.tarefa)),
+    vazio: "Ainda não há tarefas. Acrescenta as tarefas de cada um.",
+  },
+  mealheiro: {
+    ico: (d) => (["Gastou", "Depositou no banco"].includes(d.tipo) ? "euro" : "presente"),
+    id: "mealheiro", nome: "Mealheiro da Ema", item: "movimento",
+    campos: [
+      { k: "data", l: "Data", t: "date", def: hoje, req: 1 },
+      { k: "tipo", l: "Tipo", t: "select", o: ["Mesada", "Prémio", "Prenda", "Gastou", "Depositou no banco"], req: 1, def: "Prémio" },
+      { k: "valor", l: "Valor (€)", t: "money", req: 1 },
+      { k: "desc", l: "Descrição", t: "text" },
+    ],
+    titulo: (d) => d.desc || d.tipo,
+    detalhe: (d) => junta(d.tipo, fmtData(d.data)),
+    valor: (d) => (["Gastou", "Depositou no banco"].includes(d.tipo) ? "− " : "+ ") + euro(d.valor),
+    ordem: (a, b) => String(b.data).localeCompare(String(a.data)),
+    vazio: "Ainda sem movimentos.",
+  },
+  despensa: {
+    ico: (d) => (d.local === "Congelador" ? "neve" : "despensa"),
+    id: "despensa", nome: "Despensa", item: "artigo",
+    campos: [
+      { k: "artigo", l: "Artigo", t: "text", req: 1 },
+      { k: "local", l: "Onde está", t: "select", o: ["Despensa", "Frigorífico", "Congelador"], def: "Despensa", req: 1 },
+      { k: "qtd", l: "Quantidade", t: "number", def: 1 },
+      { k: "unid", l: "Unidade (ex: pacotes, kg, latas)", t: "text" },
+      { k: "minimo", l: "Avisar quando tiver só (ex: 1)", t: "number" },
+      { k: "validade", l: "Validade / congelado em", t: "date" },
+      { k: "cat", l: "Secção do supermercado", t: "select", o: CAT_COMP },
+      { k: "notas", l: "Notas", t: "textarea" },
+    ],
+    titulo: (d) => d.artigo,
+    detalhe: (d) => junta(`${d.qtd ?? 0} ${d.unid || ""}`.trim(), d.local, d.validade ? (d.local === "Congelador" ? "data: " : "validade: ") + fmtData(d.validade) : ""),
+    alertas: (d) => { const a = [];
+      if (d.validade && d.local !== "Congelador") { const n = diasAte(d.validade); if (n <= 5) a.push({ nivel: n < 0 ? "vermelho" : "laranja", dias: n, texto: n < 0 ? "Fora de validade" : "Validade " + rel(n) }); }
+      if (d.validade && d.local === "Congelador") { const n = -diasAte(d.validade); if (n >= 90) a.push({ nivel: "amarelo", dias: 5, texto: `Congelado há ${Math.round(n / 30)} meses` }); }
+      if (d.minimo != null && d.minimo !== "" && (+d.qtd || 0) <= +d.minimo) a.push({ nivel: (+d.qtd || 0) <= 0 ? "vermelho" : "amarelo", dias: 6, texto: (+d.qtd || 0) <= 0 ? "Acabou" : "Está a acabar" });
+      return a; },
+    ordem: (a, b) => String(a.artigo).localeCompare(String(b.artigo)),
+    acao: { l: (d) => "Gastei 1", fn: async (d) => { const q = Math.max(0, (+d.qtd || 0) - 1); await store.update(d.id, { ...semId(d), qtd: q }); aviso(`${d.artigo}: ficam ${q}`); } },
+    vazio: "Nada registado aqui.",
+  },
+  contactos_uteis: {
+    ico: "tel",
+    id: "contactos_uteis", nome: "Contactos da casa", item: "contacto",
+    campos: [
+      { k: "nome", l: "Nome / empresa", t: "text", req: 1 },
+      { k: "cat", l: "Categoria", t: "select", o: ["Canalizador", "Eletricista", "Gás / caldeira", "Condomínio / senhorio", "Seguradora", "Oficina", "Escola", "Saúde", "Vizinhos", "Limpezas", "Internet / TV", "Água / luz / gás (empresa)", "Outro"], req: 1 },
+      { k: "tel", l: "Telefone", t: "tel" },
+      { k: "email", l: "Email", t: "email" },
+      { k: "morada", l: "Morada", t: "text" },
+      { k: "notas", l: "Notas (n.º de cliente, apólice, horário…)", t: "textarea" },
+    ],
+    titulo: (d) => d.nome,
+    detalhe: (d) => [junta(d.cat, d.morada), d.tel ? `<a href="tel:${esc(d.tel.replace(/\s/g, ""))}">📞 ${esc(d.tel)}</a>` : "", d.email ? `<a href="mailto:${esc(d.email)}">✉️ ${esc(d.email)}</a>` : ""].filter(Boolean).join(" · "),
+    ordem: (a, b) => String(a.cat + a.nome).localeCompare(String(b.cat + b.nome)),
+    vazio: "Acrescenta o canalizador, o eletricista, a seguradora…",
+  },
+  leituras: {
+    ico: (d) => ({ "Luz": "raio", "Água": "gota", "Gás": "chama" })[d.contador] || "contadores",
+    id: "leituras", nome: "Leituras", item: "leitura",
+    campos: [
+      { k: "contador", l: "Contador", t: "select", o: ["Luz", "Água", "Gás"], req: 1 },
+      { k: "data", l: "Data", t: "date", def: hoje, req: 1 },
+      { k: "leitura", l: "Leitura (o número que aparece no contador)", t: "number", req: 1 },
+      { k: "notas", l: "Notas", t: "textarea" },
+    ],
+    titulo: (d) => `${d.contador}: ${Number(d.leitura).toLocaleString("pt-PT")} ${UNID[d.contador] || ""}`,
+    detalhe: (d) => esc(fmtData(d.data)),
+    ordem: (a, b) => String(b.data).localeCompare(String(a.data)),
+    vazio: "Ainda sem leituras.",
+  },
   saude: {
     ico: "pilula",
     id: "saude", nome: "Vacinas, análises e medicação", item: "registo",
@@ -663,7 +748,7 @@ const cab = (titulo, sub) => `<div class="cab"><div><h1>${titulo}</h1>${sub ? `<
 /* =====================================================================
    INÍCIO
    ===================================================================== */
-const ROTA_DE = { veiculos: "veiculos", tarefas: "casa", garantias: "casa", datas: "familia", documentos: "familia", escola_testes: "escola", escola_eventos: "escola", fichas_carregadas: "estudo", viagens: "viagens", ferias: "ferias", aniversarios: "ferias", consultas: "medicos" };
+const ROTA_DE = { veiculos: "veiculos", tarefas: "casa", garantias: "casa", datas: "familia", documentos: "familia", escola_testes: "escola", escola_eventos: "escola", fichas_carregadas: "estudo", viagens: "viagens", ferias: "ferias", aniversarios: "ferias", despensa: "despensa", consultas: "medicos" };
 
 let FOTO;
 const chaveFoto = () => "foto-" + (EU || "eu").toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g, "");
@@ -751,6 +836,7 @@ async function vInicio(el) {
   const alertas = [];
   ids.forEach((cid, n) => { if (cid === "consultas") return; listas[n].forEach((it) => (COLS[cid].alertas(it) || []).forEach((a) => alertas.push({ ...a, rota: ROTA_DE[cid], tit: COLS[cid].titulo(it), ico: typeof COLS[cid].ico === "function" ? COLS[cid].ico(it) : COLS[cid].ico }))); });
   alertas.push(...alertasEscolares());
+  try { alertas.push(...alertasContadores(await store.list("leituras"))); } catch (e) {}
   alertas.sort((a, b) => a.dias - b.dias);
   const consultas = listas[ids.indexOf("consultas")].filter((c) => c.data && diasAte(c.data) >= 0 && diasAte(c.data) <= 60)
     .sort((a, b) => String(a.data + (a.hora || "")).localeCompare(String(b.data + (b.hora || "")))).slice(0, 4);
@@ -995,7 +1081,7 @@ async function comprasDaEmenta() {
       bJ.disabled = true; bJ.textContent = "A juntar…";
       try {
         for (const i of escolhidos) await store.add("compras", { nome: i, qtd: ing[i] > 1 ? "×" + ing[i] : "", cat: secaoDe(i), comprado: false });
-        dlg.close(); aviso(`${escolhidos.length} artigos juntos à lista de compras`);
+        dlg.close(); aviso(`${escolhidos.length} ${escolhidos.length === 1 ? "artigo junto" : "artigos juntos"} à lista de compras`);
         location.hash = "#compras";
       } catch (err) { erro(err); rot(); }
     };
@@ -1496,6 +1582,12 @@ const ICO = {
   mover: '<path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/>',
   ferias: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
   dados: '<ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v6.5c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V5.5M4.5 12v6.5c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V12"/>',
+  tarefas: '<rect x="4" y="3.5" width="16" height="17" rx="2.5"/><path d="M7.5 9l1.5 1.5 3-3M7.5 15l1.5 1.5 3-3M14.5 9h2.5M14.5 15h2.5"/>',
+  despensa: '<path d="M7.5 3.5h9v3h-9z"/><path d="M6 6.5h12v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z"/><path d="M6 11.5h12"/>',
+  neve: '<path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M9.5 4.5 12 7l2.5-2.5M9.5 19.5 12 17l2.5 2.5"/>',
+  contadores: '<path d="M4 15.5a8 8 0 1 1 16 0"/><path d="M12 15.5l3.5-4"/><circle cx="12" cy="15.5" r="1.2"/><path d="M4 19.5h16"/>',
+  gota: '<path d="M12 3.5s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
+  chama: '<path d="M12 21a6 6 0 0 0 6-6c0-4-3-6-4-9-1 2-2 3-3.5 3.5C9 7 8 5.5 8 4c-2 2-2 6-2 8a6 6 0 0 0 6 9z"/>',
   camara: '<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.5-2.5h5.6L16.3 7h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.8" r="3.3"/>',
   impressora: '<path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/>',
   estudo: '<path d="M4 19V5.5A2.5 2.5 0 0 1 6.5 3H20v14H6.5A2.5 2.5 0 0 0 4 19.5 2.5 2.5 0 0 0 6.5 22H20v-5"/><path d="M8.5 7.5h7M8.5 11h5"/>',
@@ -1515,7 +1607,7 @@ const ICO = {
   euro: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.8a4 4 0 1 0 0 6.4M7.5 11h6M7.5 13.5h6"/>',
   mais: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
 };
-const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["escola", "Escola Ema"], ["estudo", "Estudo"], ["viagens", "Viagens"], ["ferias", "Férias e aniversários"], ["medicos", "Médicos"], ["dados", "Gerir dados"]];
+const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["escola", "Escola Ema"], ["estudo", "Estudo"], ["viagens", "Viagens"], ["ferias", "Férias e aniversários"], ["medicos", "Médicos"], ["tarefas", "Tarefas e mesada"], ["despensa", "Despensa"], ["contactos", "Contactos úteis"], ["contadores", "Contadores"], ["dados", "Gerir dados"]];
 const svg = (k) => `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]}</svg>`;
 const NA_BARRA = ["inicio", "ementas", "compras", "despesas"];
 function montarMenus() {
@@ -1543,6 +1635,141 @@ function abrirMais() {
   dlg.showModal();
 }
 
+
+
+/* =====================================================================
+   TAREFAS E MESADA
+   ===================================================================== */
+const segundaDe = (iso) => somaDias(iso, -((deIso(iso).getDay() + 6) % 7));
+let semanaT = null;
+const DIAS_SEG = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
+const diasDaTarefa = (t) => t.freq === "Uma vez por semana" ? ["s"] : t.freq === "Dias úteis (seg–sex)" ? [0, 1, 2, 3, 4] : t.freq === "Fins de semana" ? [5, 6] : [0, 1, 2, 3, 4, 5, 6];
+async function vTarefas(el) {
+  if (!semanaT) semanaT = segundaDe(hoje());
+  const [tarefas, docS, docM, mov] = await Promise.all([store.list("tarefas_familia"), store.getDoc("tarefas-" + semanaT), store.getDoc("mesada"), store.list("mealheiro")]);
+  const feitas = (docS && docS.feitas) || {};
+  const cfg = { eurosPonto: 0.25, base: 0, ...((docM) || {}) };
+  const hojeIdx = Math.round((deIso(hoje()) - deIso(semanaT)) / 86400000);
+  const pontos = {}; const possiveis = {};
+  tarefas.forEach((t) => diasDaTarefa(t).forEach((d) => {
+    const quem = t.quem === "Todos" ? PESSOAS : [t.quem];
+    quem.forEach((q) => { possiveis[q] = (possiveis[q] || 0) + (+t.pontos || 1); if (feitas[t.id + "|" + d + (t.quem === "Todos" ? "|" + q : "")]) pontos[q] = (pontos[q] || 0) + (+t.pontos || 1); });
+  }));
+  const emaP = pontos["Ema"] || 0, mesada = Math.round(((+cfg.base || 0) + emaP * (+cfg.eurosPonto || 0)) * 100) / 100;
+  const jaGuardada = mov.some((m) => m.semana === semanaT);
+  const saldo = mov.reduce((s, m) => s + (["Gastou", "Depositou no banco"].includes(m.tipo) ? -1 : 1) * (+m.valor || 0), 0);
+  const linhaTarefa = (t) => {
+    const ds = diasDaTarefa(t), quem = t.quem === "Todos" ? PESSOAS : [t.quem];
+    return quem.map((q) => { const suf = t.quem === "Todos" ? "|" + q : "";
+      return `<div class="tar"><div class="tar-n"><b>${esc(t.tarefa)}</b><span class="det">${esc(q)} · ${+t.pontos || 1} pt</span></div>
+        <div class="tar-d">${ds.map((d) => { const k = t.id + "|" + d + suf, on = !!feitas[k];
+          return `<button type="button" class="dia-chk ${on ? "on" : ""} ${d === hojeIdx ? "hoje" : ""}" data-t="${esc(k)}" aria-pressed="${on}" aria-label="${esc(t.tarefa)} ${d === "s" ? "esta semana" : DIAS_SEG[d]}">${d === "s" ? (on ? "✓ Feito" : "Fazer") : DIAS_SEG[d]}</button>`; }).join("")}</div></div>`; }).join("");
+  };
+  const grupos = [...PESSOAS, "Todos"].map((q) => { const l = tarefas.filter((t) => t.quem === q); return l.length ? `<div class="grupo"><h3>${esc(q === "Todos" ? "Todos" : q)}</h3>${l.map(linhaTarefa).join("")}</div>` : ""; }).join("");
+  el.innerHTML = `<div class="cab"><div><h1>Tarefas e mesada</h1><div class="sub2">Semana de ${fmtData(semanaT)} a ${fmtData(somaDias(semanaT, 6))}</div></div>
+      <div class="semana"><button class="sec peq" data-sem="-7" aria-label="Semana anterior">◀</button><button class="sec peq" data-sem="0">Esta semana</button><button class="sec peq" data-sem="7" aria-label="Semana seguinte">▶</button></div></div>
+    <div class="grelha">${PESSOAS.map((q) => `<div class="mini"><span class="rot">${esc(q)}</span><span class="num">${pontos[q] || 0}<small style="font-size:16px;color:var(--suave)"> / ${possiveis[q] || 0} pt</small></span>
+      <span class="orc-b"><i class="verde" style="width:${possiveis[q] ? Math.min(100, ((pontos[q] || 0) / possiveis[q]) * 100) : 0}%"></i></span></div>`).join("")}</div>
+    <section class="seccao"><h2>Tarefas da semana</h2>${grupos || `<p class="vazio">Ainda não há tarefas. Acrescenta-as em baixo, na Lista de tarefas.</p>`}</section>
+    <section class="seccao"><div class="sec-cab"><h2>💰 Mesada da Ema</h2><button type="button" class="sec peq" id="cfg-mesada">Regras</button></div>
+      <div class="orc-tot"><div><span class="total">${euro(mesada)}</span> <span class="det">esta semana · ${emaP} pontos × ${euro(cfg.eurosPonto)}${+cfg.base ? " + " + euro(cfg.base) + " base" : ""}</span></div></div>
+      <div class="acoes"><button type="button" class="pri" id="guardar-mesada" ${jaGuardada || !mesada ? "disabled" : ""}>${jaGuardada ? "✓ Já está no mealheiro" : "Pôr no mealheiro"}</button>
+      <span class="det">Mealheiro: <b style="color:var(--texto)">${euro(saldo)}</b></span></div></section>`;
+  el.onclick = async (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.sem != null) { const n = +b.dataset.sem; semanaT = n === 0 ? segundaDe(hoje()) : somaDias(semanaT, n); return render(); }
+    if (b.dataset.t) {
+      const k = b.dataset.t, on = !b.classList.contains("on");
+      b.classList.toggle("on", on); b.setAttribute("aria-pressed", on);
+      try { marcarEscrita(); const atual = ((await store.getDoc("tarefas-" + semanaT)) || {}).feitas || {}; if (on) atual[k] = true; else delete atual[k]; await store.setDoc("tarefas-" + semanaT, { feitas: atual }); render(); } catch (err) { erro(err); }
+      return;
+    }
+    if (b.id === "guardar-mesada") { try { await store.add("mealheiro", { data: hoje(), tipo: "Mesada", valor: mesada, desc: `Mesada da semana de ${fmtData(semanaT)}`, semana: semanaT }); aviso("Mesada guardada no mealheiro 🐷"); render(); } catch (err) { erro(err); } return; }
+    if (b.id === "cfg-mesada") {
+      const dlg = $("#dlg"); dlg.oncancel = null;
+      dlg.innerHTML = `<form class="form"><h2>Regras da mesada</h2><p class="det" style="margin:0">A mesada da Ema = valor base + pontos da semana × euros por ponto.</p>
+        <label class="campo"><span>Euros por ponto</span><input name="ep" inputmode="decimal" value="${String(cfg.eurosPonto).replace(".", ",")}"></label>
+        <label class="campo"><span>Valor base por semana (opcional)</span><input name="base" inputmode="decimal" value="${String(cfg.base || "").replace(".", ",")}"></label>
+        <div class="acoes"><span class="esp"></span><button type="button" class="sec" data-a="fechar">Cancelar</button><button class="pri">Guardar</button></div></form>`;
+      const f = $("form", dlg); $("[data-a=fechar]", f).onclick = () => dlg.close();
+      f.onsubmit = async (ev) => { ev.preventDefault(); try { await store.setDoc("mesada", { eurosPonto: lerNum(f.ep.value) || 0, base: lerNum(f.base.value) || 0 }); dlg.close(); render(); } catch (err) { erro(err); } };
+      dlg.showModal();
+    }
+  };
+  await seccao(el, COLS.tarefas_familia);
+  await seccao(el, COLS.mealheiro, { topo: () => `<div class="resumo"><div class="total">Saldo: ${euro(saldo)}</div></div>` });
+}
+
+/* =====================================================================
+   DESPENSA E CONGELADOR
+   ===================================================================== */
+async function vDespensa(el) {
+  const itens = await store.list("despensa");
+  const acabar = itens.filter((d) => d.minimo != null && d.minimo !== "" && (+d.qtd || 0) <= +d.minimo);
+  const validade = itens.filter((d) => d.validade && d.local !== "Congelador" && diasAte(d.validade) <= 5);
+  el.innerHTML = `${cab("Despensa e congelador", "O que há em casa, o que está a acabar e o que está a passar de validade.")}
+    <div class="grelha">
+      <div class="mini"><span class="bolha">${svg("despensa")}</span><span class="num">${itens.length}</span><span class="rot">artigos registados</span></div>
+      <div class="mini"><span class="bolha amarelo">${svg("compras")}</span><span class="num">${acabar.length}</span><span class="rot">a acabar</span></div>
+      <div class="mini"><span class="bolha vermelho">${svg("calendario")}</span><span class="num">${validade.length}</span><span class="rot">validade a terminar</span></div>
+    </div>
+    ${acabar.length ? `<section class="seccao"><h2>🛒 A acabar</h2><p class="chips">${acabar.map((d) => `<span class="chip">${esc(d.artigo)}</span>`).join("")}</p><div><button type="button" class="pri" id="para-compras">Juntar à lista de compras</button></div></section>` : ""}`;
+  const b = $("#para-compras", el);
+  if (b) b.onclick = async () => {
+    const naLista = new Set((await store.list("compras")).filter((c) => !c.comprado).map((c) => normTxt(c.nome)));
+    let n = 0;
+    for (const d of acabar) if (!naLista.has(normTxt(d.artigo))) { await store.add("compras", { nome: d.artigo, qtd: "", cat: d.cat || secaoDe(d.artigo), comprado: false }); n++; }
+    aviso(n ? `${n} ${n === 1 ? "artigo junto" : "artigos juntos"} à lista de compras` : "Já estavam todos na lista"); 
+  };
+  for (const local of ["Despensa", "Frigorífico", "Congelador"]) {
+    const col = { ...COLS.despensa, nome: local === "Congelador" ? "❄️ Congelador" : local === "Frigorífico" ? "🧊 Frigorífico" : "🥫 Despensa",
+      campos: COLS.despensa.campos.map((c) => (c.k === "local" ? { ...c, def: local } : c.k === "validade" && local === "Congelador" ? { ...c, l: "Congelado em", def: hoje } : c)) };
+    await seccao(el, col, { filtro: (d) => (d.local || "Despensa") === local });
+  }
+}
+
+/* =====================================================================
+   CONTACTOS ÚTEIS
+   ===================================================================== */
+const EMERGENCIA = [["Emergência (INEM, bombeiros, polícia)", "112"], ["SNS 24 — aconselhamento de saúde", "808 24 24 24"], ["Centro de Informação Antivenenos", "800 250 250"]];
+async function vContactos(el) {
+  el.innerHTML = `${cab("Contactos úteis", "Os contactos da casa num só sítio. Toca no número para ligar.")}
+    <section class="seccao"><h2>🚨 Emergência</h2>${EMERGENCIA.map(([n, t]) => `<a class="linha-l" href="tel:${t.replace(/\s/g, "")}"><span class="bolha vermelho">${svg("tel")}</span><span class="ct"><b>${esc(n)}</b><span class="det">${esc(t)}</span></span></a>`).join("")}</section>`;
+  await seccao(el, COLS.contactos_uteis);
+}
+
+/* =====================================================================
+   LEITURAS DOS CONTADORES
+   ===================================================================== */
+async function vContadores(el) {
+  const leituras = await store.list("leituras");
+  const blocos = ["Luz", "Água", "Gás"].map((c) => {
+    const l = leituras.filter((x) => x.contador === c && x.data && x.leitura != null).sort((a, b) => a.data.localeCompare(b.data));
+    if (!l.length) return "";
+    const ult = l[l.length - 1], u = UNID[c];
+    const inter = l.slice(1).map((x, i) => { const dias = Math.max(1, Math.round((deIso(x.data) - deIso(l[i].data)) / 86400000)); return { ate: x.data, cons: x.leitura - l[i].leitura, dias, porDia: (x.leitura - l[i].leitura) / dias }; }).slice(-6);
+    const media = inter.length ? inter.reduce((s, x) => s + x.porDia, 0) / inter.length : null;
+    const semLeitura = -diasAte(ult.data);
+    const max = Math.max(...inter.map((x) => x.porDia), 0.0001);
+    const f = (n, d = 1) => Number(n).toLocaleString("pt-PT", { maximumFractionDigits: d });
+    return `<section class="seccao"><div class="sec-cab"><span class="bolha">${svg(COLS.leituras.ico({ contador: c }))}</span><h2>${c}</h2><span class="tag ${semLeitura > 35 ? "laranja" : ""}">última: ${fmtData(ult.data)}</span></div>
+      <div class="orc-tot"><div><span class="total">${f(ult.leitura, 3)} ${u}</span></div>
+      ${media != null ? `<div class="det">Média: <b>${f(media, 2)} ${u}/dia</b> · ≈ ${f(media * 30, 1)} ${u} por mês${inter.length ? ` · último período: ${f(inter[inter.length - 1].cons, 2)} ${u} em ${inter[inter.length - 1].dias} dias` : ""}</div>` : `<div class="det">Faz mais uma leitura para veres o consumo.</div>`}</div>
+      ${semLeitura > 35 ? `<span class="al laranja">Já passaram ${semLeitura} dias desde a última leitura</span>` : ""}
+      ${inter.length > 1 ? `<div class="hist"><div class="det">Consumo por dia em cada período</div><div class="hist-b">${inter.map((x, i) => `<div class="hb ${i === inter.length - 1 ? "atual" : ""}"><span class="hv">${f(x.porDia, 1)}</span><i style="height:${(x.porDia / max) * 100}%"></i><span class="hm">${dm(x.ate)}</span></div>`).join("")}</div></div>` : ""}
+    </section>`;
+  }).join("");
+  el.innerHTML = `${cab("Contadores", "Leituras da luz, água e gás. Uma leitura por mês chega para veres os consumos e apanhares faturas estranhas.")}${blocos || ""}`;
+  await seccao(el, COLS.leituras);
+}
+function alertasContadores(leituras) {
+  return ["Luz", "Água", "Gás"].map((c) => {
+    const l = leituras.filter((x) => x.contador === c && x.data).sort((a, b) => b.data.localeCompare(a.data));
+    if (!l.length) return null;
+    const n = -diasAte(l[0].data);
+    return n > 35 ? { nivel: "amarelo", dias: 7, texto: `Última leitura há ${n} dias`, rota: "contadores", tit: "Fazer leitura do contador da " + c.toLowerCase(), ico: "contadores" } : null;
+  }).filter(Boolean);
+}
 
 /* =====================================================================
    GERIR DADOS (apagar anexos e registos)
@@ -1650,7 +1877,7 @@ async function apagarVarios(itens) {
 /* =====================================================================
    NAVEGAÇÃO
    ===================================================================== */
-const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, estudo: vEstudo, viagens: vViagens, ferias: vFerias, medicos: vMedicos, dados: vDados };
+const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, estudo: vEstudo, viagens: vViagens, ferias: vFerias, medicos: vMedicos, tarefas: vTarefas, despensa: vDespensa, contactos: vContactos, contadores: vContadores, dados: vDados };
 let ROTA_ARGS = [];
 async function render() {
   if (!store) return;
