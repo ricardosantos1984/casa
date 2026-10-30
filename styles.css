@@ -190,6 +190,29 @@ a.mini:hover{background:var(--hover)}
 .imp-barra .pri{display:inline-flex;align-items:center;gap:8px}
 .imp-barra .pri svg{width:20px;height:20px}
 
+.sem-ing{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:var(--raio);background:var(--laranja-f)}
+.ing-prato{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--linha)}
+.ing-prato:first-of-type{border-top:none}
+.form .artigo{cursor:pointer}
+
+.orc-tot{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:var(--raio);background:var(--painel2)}
+.orc-l{display:flex;flex-direction:column;gap:5px;padding:6px 0}
+.orc-t{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:15px}
+.orc-b{display:block;height:8px;border-radius:6px;background:var(--linha);overflow:hidden}
+.orc-b.g{height:12px}
+.orc-b i{display:block;height:100%;border-radius:6px}
+.orc-b i.verde{background:#4CD08A}.orc-b i.laranja{background:var(--laranja)}.orc-b i.vermelho{background:var(--vermelho)}
+.txt-v{color:var(--vermelho);font-weight:700}
+.orc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hist{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.hist-b{display:flex;align-items:flex-end;gap:8px;height:130px;padding-top:4px}
+.hb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;font-size:12px;color:var(--suave)}
+.hb i{display:block;width:70%;max-width:46px;min-height:2px;border-radius:6px 6px 2px 2px;background:var(--linha)}
+.hb.atual i{background:var(--acento)}
+.hb.atual{color:var(--texto);font-weight:700}
+.hv{font-size:11px}
+.mini .orc-b{margin-top:4px}
+
 /* anexos */
 .anexos{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:var(--raio);background:var(--painel2);border:1px dashed var(--linha)}
 .anx-cab{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;font-weight:700;color:var(--suave)}

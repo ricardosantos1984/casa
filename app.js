@@ -679,8 +679,9 @@ function reduzirImagem(file, max = 1400) {
 async function vInicio(el) {
   const ini = sabadoDe(hoje()), idx = Math.round((deIso(hoje()) - deIso(ini)) / 86400000);
   const ids = Object.keys(ROTA_DE);
-  const [foto, docE, compras, despesas, ...listas] = await Promise.all([fotoFamilia(), store.getDoc("ementa-" + ini), store.list("compras"), store.list("despesas"), ...ids.map((i) => store.list(i))]);
+  const [docOrc, foto, docE, compras, despesas, ...listas] = await Promise.all([store.getDoc("orcamento"), fotoFamilia(), store.getDoc("ementa-" + ini), store.list("compras"), store.list("despesas"), ...ids.map((i) => store.list(i))]);
   const sel = (docE && docE.sel) || {};
+  const totOrc = Object.values((docOrc && docOrc.cat) || {}).reduce((a, v) => a + (+v || 0), 0);
   const alertas = [];
   ids.forEach((cid, n) => { if (cid === "consultas") return; listas[n].forEach((it) => (COLS[cid].alertas(it) || []).forEach((a) => alertas.push({ ...a, rota: ROTA_DE[cid], tit: COLS[cid].titulo(it), ico: typeof COLS[cid].ico === "function" ? COLS[cid].ico(it) : COLS[cid].ico }))); });
   alertas.push(...alertasEscolares());
@@ -712,7 +713,7 @@ async function vInicio(el) {
   <div class="grelha">
     <a class="mini" href="#compras"><span class="bolha">${svg("compras")}</span><span class="num">${falta.length}</span><span class="rot">por comprar</span></a>
     <a class="mini" href="#despesas"><span class="bolha">${svg("euro")}</span><span class="num">${euro(totSem)}</span><span class="rot">gasto esta semana</span></a>
-    <a class="mini" href="#despesas"><span class="bolha">${svg("calendario")}</span><span class="num">${euro(totMes)}</span><span class="rot">gasto este mês</span></a>
+    <a class="mini" href="#despesas"><span class="bolha">${svg("calendario")}</span><span class="num">${euro(totMes)}</span><span class="rot">gasto este mês${totOrc ? ` de ${euro(totOrc)}` : ""}</span>${totOrc ? `<span class="orc-b"><i class="${totMes > totOrc ? "vermelho" : totMes >= totOrc * 0.8 ? "laranja" : "verde"}" style="width:${Math.min(100, (totMes / totOrc) * 100)}%"></i></span>` : ""}</a>
   </div>
   <section class="seccao"><div class="sec-cab"><h2>Próximas consultas</h2><a class="ver" href="#medicos">Ver todas</a></div>
     ${consultas.length ? consultas.map((c) => { const n = diasAte(c.data); return `<a class="linha-l" href="#medicos"><span class="bolha ${n <= 1 ? "laranja" : "azul"}">${svg("medicos")}</span><span class="ct"><b>${esc(c.pessoa)} — ${esc(c.esp || "consulta")}</b><span class="det">${esc(fmtData(c.data))}${c.hora ? " às " + esc(c.hora) : ""}${c.local ? " · " + esc(c.local) : ""}</span></span><span class="tag ${n <= 1 ? "laranja" : ""}">${esc(rel(n))}</span></a>`; }).join("") : `<p class="vazio">Sem consultas nos próximos 60 dias.</p>`}
@@ -768,7 +769,8 @@ function desenharEmenta(el) {
       <label class="mes">Sábado <input type="date" id="ini" value="${E.ini}" aria-label="Início da semana (sábado)"></label>
       <button class="sec peq" data-sem="7" aria-label="Semana seguinte">▶</button>
       <button class="sec" id="copiar">Copiar semana anterior</button>
-      <button class="pri" id="imprimir">Imprimir semana</button>
+      <button class="sec" id="imprimir">Imprimir semana</button>
+      <button class="pri" id="gerar-compras">🛒 Lista de compras da semana</button>
     </div></div>
   <div class="dias" role="tablist">${DIAS.map((d, i) => `<button role="tab" aria-selected="${i === E.dia}" data-dia="${i}">${cap(d).slice(0, 3)} ${deIso(somaDias(E.ini, i)).getDate()}</button>`).join("")}</div>
   <h2 class="dia-tit">${DIAS[E.dia]} · ${dm(somaDias(E.ini, E.dia))}</h2>
@@ -814,6 +816,7 @@ function desenharEmenta(el) {
     else if (t.dataset.sem) mudarSemana(somaDias(E.ini, +t.dataset.sem));
     else if (t.dataset.usar) usar(t.dataset.usar);
     else if (t.id === "imprimir") imprimirEmenta();
+    else if (t.id === "gerar-compras") comprasDaEmenta();
     else if (t.id === "copiar") {
       const ant = await store.getDoc("ementa-" + somaDias(E.ini, -7));
       if (!ant || !ant.sel || !Object.values(ant.sel).some(Boolean)) return aviso("A semana anterior está vazia");
@@ -864,6 +867,74 @@ function imprimirFichas(lista, solucoes) {
   imprimir(lista.map(([d, f], i) => htmlFichaPapel(d, f).replace('<section class="fp">', i ? '<section class="fp quebra">' : '<section class="fp">')).join("") + (solucoes ? htmlSolucoes(lista) : ""), "retrato");
 }
 window.imprimirFichas = imprimirFichas;
+
+
+/* ---------- lista de compras a partir da ementa ---------- */
+const secaoDe = (nome) => { const n = nome.toLowerCase(); const m = (window.SECCAO_DE || []).find(([k]) => n.includes(k)); return m ? m[1] : "Mercearia"; };
+function ingredientesBase(prato, extra) {
+  if (extra[prato]) return extra[prato];
+  const base = (window.INGREDIENTES || {})[prato];
+  if (base) return base;
+  const n = prato.toLowerCase(), l = [];
+  (window.INGREDIENTES_LANCHE || []).forEach(([k, v]) => { if (n.includes(k) && !l.includes(v)) l.push(v); });
+  if (n.includes("iogurte") && !l.some((x) => /iogurte/i.test(x))) l.push("Iogurtes");
+  return l.length ? l : null;
+}
+async function comprasDaEmenta() {
+  const [docI, compras] = await Promise.all([store.getDoc("ingredientes"), store.list("compras")]);
+  let extra = (docI && docI.pratos) || {};
+  const pratos = {};
+  Object.entries(E.sel).forEach(([k, v]) => { if (v && !/S$/.test(k)) pratos[v] = (pratos[v] || 0) + 1; });
+  if (!Object.keys(pratos).length) return aviso("Escolhe primeiro os pratos da semana");
+  const jaNaLista = new Set(compras.filter((c) => !c.comprado).map((c) => normTxt(c.nome)));
+  const dlg = $("#dlg"); dlg.oncancel = null;
+  const desenhar = () => {
+    const ing = {}, sem = [];
+    Object.keys(pratos).forEach((p) => { const l = ingredientesBase(p, extra); if (l === null) sem.push(p); else l.forEach((i) => { ing[i] = (ing[i] || 0) + pratos[p]; }); });
+    const porSec = {}; Object.keys(ing).forEach((i) => { const s2 = secaoDe(i); (porSec[s2] = porSec[s2] || []).push(i); });
+    dlg.innerHTML = `<div class="form"><div class="pega" aria-hidden="true"></div><h2>Lista de compras da semana</h2>
+      <p class="det" style="margin:0">${dm(E.ini)} a ${dm(somaDias(E.ini, 6))} · desmarca o que já tens em casa.</p>
+      ${sem.length ? `<div class="sem-ing"><b>Pratos sem ingredientes definidos</b>${sem.map((p) => `<div class="ing-prato"><span>${esc(p)}</span><button type="button" class="sec peq" data-ed="${esc(p)}">✏️ Definir</button></div>`).join("")}</div>` : ""}
+      ${CAT_COMP.filter((c) => porSec[c]).map((c) => `<div class="grupo"><h3>${c}</h3>${porSec[c].sort().map((i) => { const ja = jaNaLista.has(normTxt(i));
+        return `<label class="artigo"><input type="checkbox" data-ing="${esc(i)}" ${ja ? "" : "checked"}><span>${esc(i)}</span><span class="q">${ja ? "já está na lista" : ing[i] > 1 ? "×" + ing[i] : ""}</span></label>`; }).join("")}</div>`).join("")}
+      <details class="seccao"><summary>Ver e editar os ingredientes de cada prato</summary>
+        ${Object.keys(pratos).map((p) => { const l = ingredientesBase(p, extra) || [];
+          return `<div class="ing-prato"><span><b>${esc(p)}</b><br><span class="det">${l.length ? esc(l.join(", ")) : "sem ingredientes"}</span></span><button type="button" class="sec peq" data-ed="${esc(p)}">✏️</button></div>`; }).join("")}
+      </details>
+      <div class="acoes"><span class="esp"></span><button type="button" class="sec" data-a="fechar">Cancelar</button><button type="button" class="pri" data-a="juntar">Juntar à lista</button></div></div>`;
+    const atual = () => $$("[data-ing]:checked", dlg).length;
+    const bJ = $("[data-a=juntar]", dlg);
+    const rot = () => { bJ.textContent = `Juntar ${atual()} à lista`; bJ.disabled = !atual(); };
+    rot(); dlg.onchange = rot;
+    $("[data-a=fechar]", dlg).onclick = () => dlg.close();
+    $$("[data-ed]", dlg).forEach((b) => (b.onclick = () => editarIngredientes(b.dataset.ed)));
+    bJ.onclick = async () => {
+      const escolhidos = $$("[data-ing]:checked", dlg).map((x) => x.dataset.ing);
+      bJ.disabled = true; bJ.textContent = "A juntar…";
+      try {
+        for (const i of escolhidos) await store.add("compras", { nome: i, qtd: ing[i] > 1 ? "×" + ing[i] : "", cat: secaoDe(i), comprado: false });
+        dlg.close(); aviso(`${escolhidos.length} artigos juntos à lista de compras`);
+        location.hash = "#compras";
+      } catch (err) { erro(err); rot(); }
+    };
+  };
+  const editarIngredientes = (prato) => {
+    const atual = ingredientesBase(prato, extra) || [];
+    dlg.innerHTML = `<div class="form"><h2>Ingredientes</h2><p style="margin:0"><b>${esc(prato)}</b></p>
+      <label class="campo"><span>Um ingrediente por linha</span><textarea rows="8" id="ing-txt">${esc(atual.join("\n"))}</textarea></label>
+      <p class="det" style="margin:0">Fica guardado para as próximas semanas.</p>
+      <div class="acoes"><span class="esp"></span><button type="button" class="sec" data-a="voltar">Voltar</button><button type="button" class="pri" data-a="ok">Guardar</button></div></div>`;
+    $("[data-a=voltar]", dlg).onclick = desenhar;
+    $("[data-a=ok]", dlg).onclick = async () => {
+      extra = { ...extra, [prato]: $("#ing-txt", dlg).value.split("\n").map((x) => x.trim()).filter(Boolean) };
+      try { await store.setDoc("ingredientes", { pratos: extra }); aviso("Ingredientes guardados"); } catch (err) { erro(err); }
+      desenhar();
+    };
+    $("#ing-txt", dlg).focus();
+  };
+  desenhar();
+  dlg.showModal();
+}
 
 function imprimirEmenta() {
   const sel = E.sel, ini = E.ini;
@@ -930,6 +1001,48 @@ function resumoDespesas(vis) {
     ${Object.entries(porCat).sort((a, b) => b[1] - a[1]).map(([c, v]) => `<div class="barra"><span>${esc(c)}</span><span class="b"><i style="width:${(v / max) * 100}%"></i></span><b>${euro(v)}</b></div>`).join("")}
     ${Object.keys(porQuem).length ? `<div class="det">${Object.entries(porQuem).map(([q, v]) => `${esc(q)}: ${euro(v)}`).join(" · ")}</div>` : ""}</div>`;
 }
+
+function blocoOrcamento(todas, orc, mes) {
+  const doMes = todas.filter((d) => String(d.data || "").startsWith(mes));
+  const gasto = {}; doMes.forEach((d) => { const c = d.cat || "Outros"; gasto[c] = (gasto[c] || 0) + (+d.valor || 0); });
+  const cats = CAT_DESP.filter((c) => orc[c] > 0 || gasto[c]);
+  const totO = Object.values(orc).reduce((s, v) => s + (+v || 0), 0), totG = doMes.reduce((s, d) => s + (+d.valor || 0), 0);
+  const cor = (p) => (p > 1 ? "vermelho" : p >= 0.8 ? "laranja" : "verde");
+  const linha = (c) => {
+    const g = gasto[c] || 0, o = +orc[c] || 0;
+    if (!o) return `<div class="orc-l"><div class="orc-t"><span>${esc(c)}</span><span class="det">${euro(g)} · sem orçamento</span></div></div>`;
+    const p = g / o;
+    return `<div class="orc-l"><div class="orc-t"><span>${esc(c)}</span><span class="det"><b>${euro(g)}</b> de ${euro(o)}${p > 1 ? ` · <span class="txt-v">+${euro(g - o)}</span>` : ` · faltam ${euro(o - g)}`}</span></div>
+      <div class="orc-b"><i class="${cor(p)}" style="width:${Math.min(100, p * 100)}%"></i></div></div>`;
+  };
+  // últimos 6 meses
+  const meses = Array.from({ length: 6 }, (_, i) => somaMeses(mes + "-01", i - 5).slice(0, 7));
+  const tot = meses.map((m) => todas.filter((d) => String(d.data || "").startsWith(m)).reduce((s, d) => s + (+d.valor || 0), 0));
+  const max = Math.max(...tot, totO, 1);
+  const abrev = (m) => deIso(m + "-01").toLocaleDateString("pt-PT", { month: "short" }).replace(".", "");
+  return `<section class="seccao"><div class="sec-cab"><h2>Orçamento · ${nomeDoMes(mes)}</h2><button type="button" class="sec peq" id="orc-def">${totO ? "Alterar" : "Definir orçamento"}</button></div>
+    ${totO ? `<div class="orc-tot"><div><span class="total">${euro(totG)}</span> <span class="det">de ${euro(totO)}</span></div><div class="orc-b g"><i class="${cor(totG / totO)}" style="width:${Math.min(100, (totG / totO) * 100)}%"></i></div></div>`
+      : `<p class="det" style="margin:0">Define quanto querem gastar por mês em cada categoria e a app avisa quando estiverem perto do limite.</p>`}
+    ${cats.length ? cats.map(linha).join("") : ""}
+    <div class="hist"><div class="det">Últimos 6 meses</div><div class="hist-b">${meses.map((m, i) => `<div class="hb ${m === mes ? "atual" : ""}" title="${nomeDoMes(m)}: ${euro(tot[i])}"><span class="hv">${tot[i] ? Math.round(tot[i]) + "€" : ""}</span><i style="height:${(tot[i] / max) * 100}%"></i><span class="hm">${abrev(m)}</span></div>`).join("")}</div>
+    ${totO ? `<div class="det">Linha do orçamento: ${euro(totO)}</div>` : ""}</div></section>`;
+}
+function definirOrcamento(orc) {
+  const dlg = $("#dlg"); dlg.oncancel = null;
+  dlg.innerHTML = `<form class="form"><div class="pega" aria-hidden="true"></div><h2>Orçamento mensal</h2>
+    <p class="det" style="margin:0">Quanto querem gastar, no máximo, por mês em cada categoria. Deixa em branco as que não interessam.</p>
+    <div class="orc-grid">${CAT_DESP.map((c) => `<label class="campo"><span>${esc(c)}</span><input inputmode="decimal" name="${esc(c)}" value="${orc[c] ? String(orc[c]).replace(".", ",") : ""}" placeholder="—"></label>`).join("")}</div>
+    <div class="acoes"><span class="esp"></span><button type="button" class="sec" data-a="fechar">Cancelar</button><button class="pri">Guardar</button></div></form>`;
+  const f = $("form", dlg);
+  $("[data-a=fechar]", f).onclick = () => dlg.close();
+  f.onsubmit = async (e) => {
+    e.preventDefault();
+    const cat = {}; CAT_DESP.forEach((c) => { const n = lerNum(f.elements.namedItem(c).value); if (n) cat[c] = n; });
+    try { await store.setDoc("orcamento", { cat }); dlg.close(); aviso("Orçamento guardado"); render(); } catch (err) { erro(err); }
+  };
+  dlg.showModal();
+}
+
 async function vDespesas(el) {
   const m1 = mesDesp, m2 = mesSeguinte(m1), atual = m1 === hoje().slice(0, 7);
   el.innerHTML = `<div class="cab"><div><h1>Despesas</h1><div class="sub2">${nomeDoMes(m1)} e ${nomeDoMes(m2).toLowerCase()}</div></div>
@@ -945,6 +1058,10 @@ async function vDespesas(el) {
     vazio: m > hoje().slice(0, 7) ? "Ainda sem despesas previstas para este mês." : "Sem despesas neste mês.",
     campos: COLS.despesas.campos.map((c) => (c.k === "data" ? { ...c, def: () => (m === hoje().slice(0, 7) ? hoje() : m + "-01") } : c)),
   });
+  const [todas, docO] = await Promise.all([store.list("despesas"), store.getDoc("orcamento")]);
+  const orc = (docO && docO.cat) || {};
+  el.insertAdjacentHTML("beforeend", blocoOrcamento(todas, orc, m1));
+  $("#orc-def", el).onclick = () => definirOrcamento(orc);
   await seccao(el, colMes(m1), { titulo: (atual ? "Este mês · " : "") + nomeDoMes(m1), filtro: (d) => String(d.data || "").startsWith(m1), topo: resumoDespesas });
   await seccao(el, colMes(m2), { titulo: (atual ? "Próximo mês · " : "") + nomeDoMes(m2), filtro: (d) => String(d.data || "").startsWith(m2), topo: resumoDespesas });
 }
