@@ -448,6 +448,24 @@ const COLS = {
     ordem: (a, b) => { const fa = diasAte(a.fim || a.inicio) >= 0, fb = diasAte(b.fim || b.inicio) >= 0; if (fa !== fb) return fa ? -1 : 1; return fa ? String(a.inicio).localeCompare(String(b.inicio)) : String(b.inicio).localeCompare(String(a.inicio)); },
     vazio: "Sem férias marcadas.",
   },
+  fichas_carregadas: {
+    ico: (d) => (d.feita ? "escudo" : "doc"),
+    id: "fichas_carregadas", nome: "Fichas carregadas", item: "ficha",
+    campos: [
+      { k: "titulo", l: "Nome da ficha (ex: Ficha de frações — professora)", t: "text", req: 1 },
+      { k: "disc", l: "Disciplina", t: "select", o: () => [...DISC().map((d) => d.nome), "Outra"], req: 1 },
+      { k: "data", l: "Para fazer até", t: "date" },
+      { k: "feita", l: "Já está feita", t: "check" },
+      { k: "nota", l: "Nota / resultado", t: "text" },
+      { k: "notas", l: "Notas", t: "textarea" },
+    ],
+    titulo: (d) => d.titulo,
+    detalhe: (d) => junta(d.disc, d.data ? "até " + fmtData(d.data) : "", d.feita ? "feita ✓" + (d.nota ? " · " + d.nota : "") : "por fazer", d.anexos && d.anexos.length ? "" : "⚠️ sem ficheiro — junta o PDF ou a foto"),
+    alertas: (d) => { if (d.feita || !d.data) return []; const n = diasAte(d.data); return n <= 3 ? [{ nivel: n < 0 ? "vermelho" : "laranja", dias: n, texto: "Entregar " + rel(n) }] : []; },
+    ordem: (a, b) => (!!a.feita === !!b.feita ? String(a.data || "9").localeCompare(String(b.data || "9")) : a.feita ? 1 : -1),
+    acao: { l: (d) => (d.feita ? "Por fazer" : "Feita ✓"), fn: async (d) => { await store.update(d.id, { ...semId(d), feita: !d.feita }); } },
+    vazio: "Carrega aqui fichas da escola ou da internet (PDF, foto ou Word) para a Ema fazer.",
+  },
   saude: {
     ico: "pilula",
     id: "saude", nome: "Vacinas, análises e medicação", item: "registo",
@@ -638,7 +656,7 @@ const cab = (titulo, sub) => `<div class="cab"><div><h1>${titulo}</h1>${sub ? `<
 /* =====================================================================
    INÍCIO
    ===================================================================== */
-const ROTA_DE = { veiculos: "veiculos", tarefas: "casa", garantias: "casa", datas: "familia", documentos: "familia", escola_testes: "escola", escola_eventos: "escola", viagens: "viagens", ferias: "ferias", aniversarios: "ferias", consultas: "medicos" };
+const ROTA_DE = { veiculos: "veiculos", tarefas: "casa", garantias: "casa", datas: "familia", documentos: "familia", escola_testes: "escola", escola_eventos: "escola", fichas_carregadas: "estudo", viagens: "viagens", ferias: "ferias", aniversarios: "ferias", consultas: "medicos" };
 
 let FOTO;
 const chaveFoto = () => "foto-" + (EU || "eu").toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g, "");
@@ -1225,29 +1243,46 @@ function ligarImprimir(el, lista) {
 
 async function vEstudo(el) {
   const [idD, idF] = ROTA_ARGS;
-  const prog = ((await store.getDoc(chaveEstudo())) || {}).res || {};
+  const [docP, docO, carregadas] = await Promise.all([store.getDoc(chaveEstudo()), store.getDoc("estudo-ocultas"), store.list("fichas_carregadas")]);
+  const prog = (docP || {}).res || {};
+  const ocultas = new Set(((docO || {}).ids) || []);
+  const vis = (d) => d.fichas.filter((f) => !ocultas.has(f.id));
   const disc = DISC().find((d) => d.id === idD);
   const ficha = disc && disc.fichas.find((f) => f.id === idF);
+  const minhas = (d) => carregadas.filter((c) => c.disc === d.nome);
+  const guardarOcultas = async (ids) => { await store.setDoc("estudo-ocultas", { ids: [...ids] }); render(); };
 
   if (!disc) {
-    const total = DISC().reduce((s, d) => s + d.fichas.length, 0), feitas = DISC().reduce((s, d) => s + d.fichas.filter((f) => prog[f.id]).length, 0);
-    el.innerHTML = `${cab("Estudo", `Fichas do 5.º ano · ${feitas} de ${total} feitas`)}
-      <div class="disc-grelha">${DISC().map((d) => { const n = d.fichas.filter((f) => prog[f.id]).length;
-        return `<a class="disc" href="#estudo/${d.id}">${badge(d)}<b>${esc(d.nome)}</b><span class="det">${n} de ${d.fichas.length} fichas feitas</span>
-          <span class="prog"><i style="width:${(n / d.fichas.length) * 100}%;background:${d.cor}"></i></span></a>`; }).join("")}</div>
+    const total = DISC().reduce((s, d) => s + vis(d).length, 0), feitas = DISC().reduce((s, d) => s + vis(d).filter((f) => prog[f.id]).length, 0);
+    el.innerHTML = `${cab("Estudo", `Fichas do 5.º ano · ${feitas} de ${total} feitas${carregadas.length ? ` · ${carregadas.length} carregadas por vocês` : ""}`)}
+      <div class="disc-grelha">${DISC().map((d) => { const v = vis(d), n = v.filter((f) => prog[f.id]).length, m = minhas(d).length;
+        return `<a class="disc" href="#estudo/${d.id}">${badge(d)}<b>${esc(d.nome)}</b><span class="det">${n} de ${v.length} fichas feitas${m ? ` · ${m} carregada${m > 1 ? "s" : ""}` : ""}</span>
+          <span class="prog"><i style="width:${v.length ? (n / v.length) * 100 : 0}%;background:${d.cor}"></i></span></a>`; }).join("")}</div>
       <section class="seccao"><h2>Fichas para imprimir</h2><p class="det" style="margin:0">Folhas A4 para a Ema fazer à mão. Também podes imprimir por disciplina ou ficha a ficha.</p>${barraImprimir(`Imprimir todas (${total})`)}</section>`;
-    ligarImprimir(el, DISC().flatMap((d) => d.fichas.map((f) => [d, f])));
+    ligarImprimir(el, DISC().flatMap((d) => vis(d).map((f) => [d, f])));
+    await seccao(el, COLS.fichas_carregadas, { titulo: "📤 Fichas carregadas por vocês" });
     return;
   }
   if (!ficha) {
+    const v = vis(disc), escondidas = disc.fichas.filter((f) => ocultas.has(f.id));
     el.innerHTML = `<a class="voltar" href="#estudo">‹ Estudo</a>
-      <div class="cab"><div style="display:flex;gap:14px;align-items:center">${badge(disc, "g")}<div><h1>${esc(disc.nome)}</h1><div class="sub2">5.º ano · ${disc.fichas.length} fichas</div></div></div></div>
-      <section class="seccao">${disc.fichas.map((f, i) => { const r = prog[f.id];
-        return `<a class="linha-l" href="#estudo/${disc.id}/${f.id}"><span class="num-f" style="--c:${disc.cor}">${i + 1}</span>
+      <div class="cab"><div style="display:flex;gap:14px;align-items:center">${badge(disc, "g")}<div><h1>${esc(disc.nome)}</h1><div class="sub2">5.º ano · ${v.length} fichas da app${minhas(disc).length ? ` · ${minhas(disc).length} carregadas` : ""}</div></div></div></div>
+      <section class="seccao"><h2>Fichas da app</h2>${v.length ? v.map((f, i) => { const r = prog[f.id];
+        return `<div class="linha-l"><a class="linha-l sem-borda" href="#estudo/${disc.id}/${f.id}"><span class="num-f" style="--c:${disc.cor}">${i + 1}</span>
           <span class="ct"><b>${esc(f.titulo)}</b><span class="det">${esc(f.sub)} · ${f.q.length} perguntas</span></span>
-          ${r ? `<span class="tag ${r.melhor === r.total ? "ok" : ""}">${r.melhor}/${r.total}</span>` : `<span class="tag">Fazer</span>`}</a>`; }).join("")}</section>
-      <section class="seccao"><h2>Imprimir</h2>${barraImprimir(`Imprimir as ${disc.fichas.length} fichas de ${esc(disc.nome)}`)}</section>`;
-    ligarImprimir(el, disc.fichas.map((f) => [disc, f]));
+          ${r ? `<span class="tag ${r.melhor === r.total ? "ok" : ""}">${r.melhor}/${r.total}</span>` : `<span class="tag">Fazer</span>`}</a>
+          <button type="button" class="anx-x" data-ocultar="${f.id}" aria-label="Apagar a ficha ${esc(f.titulo)}" title="Apagar ficha">🗑</button></div>`; }).join("") : `<p class="vazio">Todas as fichas da app desta disciplina estão apagadas.</p>`}
+        ${escondidas.length ? `<details><summary>Fichas apagadas (${escondidas.length})</summary>${escondidas.map((f) => `<div class="ing-prato"><span>${esc(f.titulo)}</span><button type="button" class="sec peq" data-repor="${f.id}">Repor</button></div>`).join("")}</details>` : ""}
+      </section>
+      ${v.length ? `<section class="seccao"><h2>Imprimir</h2>${barraImprimir(`Imprimir as ${v.length} fichas de ${esc(disc.nome)}`)}</section>` : ""}`;
+    ligarImprimir(el, v.map((f) => [disc, f]));
+    el.addEventListener("click", async (e) => {
+      const o = e.target.closest("[data-ocultar]"), r = e.target.closest("[data-repor]");
+      if (o) { const f = disc.fichas.find((x) => x.id === o.dataset.ocultar); if (!confirm(`Apagar a ficha "${f.titulo}"?\n(Podes repô-la mais tarde em "Fichas apagadas".)`)) return; ocultas.add(f.id); await guardarOcultas(ocultas); aviso("Ficha apagada"); }
+      if (r) { ocultas.delete(r.dataset.repor); await guardarOcultas(ocultas); aviso("Ficha reposta"); }
+    });
+    const colD = { ...COLS.fichas_carregadas, campos: COLS.fichas_carregadas.campos.map((c) => (c.k === "disc" ? { ...c, def: disc.nome } : c)) };
+    await seccao(el, colD, { titulo: "📤 Fichas carregadas por vocês", filtro: (c) => c.disc === disc.nome });
     return;
   }
   const r = prog[ficha.id];
