@@ -754,16 +754,47 @@ function desenharEmenta(el) {
   el.onkeydown = (e) => { if (e.key === "Enter" && e.target.dataset.ideia) { e.preventDefault(); usar(e.target.dataset.ideia); } };
 }
 
+
+function imprimir(html, orientacao) {
+  $("#folha").innerHTML = html;
+  let st = $("#pag-css");
+  if (!st) { st = document.createElement("style"); st.id = "pag-css"; document.head.appendChild(st); }
+  st.textContent = orientacao === "retrato" ? "@page{size:A4 portrait;margin:12mm 14mm}" : "@page{size:A4 landscape;margin:0}";
+  window.print();
+}
+const LETRAS = "abcdefgh";
+function htmlFichaPapel(d, f) {
+  const linhas = (n) => Array.from({ length: n }, () => `<div class="fp-linha"></div>`).join("");
+  const q = f.q.map((x) => `<li><p>${esc(x.p)}</p>${
+    x.t === "mc" ? `<div class="fp-ops">${x.o.map((o, j) => `<div class="fp-op"><span class="fp-cx"></span>${LETRAS[j]}) ${esc(o)}</div>`).join("")}</div>`
+    : x.t === "num" && d.id === "mat" ? `<div class="fp-calcrow"><div class="fp-calc">Cálculos:</div><div class="fp-resp">Resposta:<span class="fp-linha"></span></div></div>`
+    : linhas(x.t === "txt" && x.p.length > 60 ? 2 : 1)}</li>`).join("");
+  return `<section class="fp">
+    <header class="fp-cab"><div><div class="fp-disc" style="color:${d.cor}">${esc(d.nome)} · 5.º ano</div><h2 class="fp-tit">${esc(f.titulo)}</h2><div class="fp-sub">${esc(f.sub)}</div></div>
+      <div class="fp-nota">Nota<br><b>____ / ${f.q.length}</b></div></header>
+    <div class="fp-dados"><span>Nome: <i class="fp-linha curta larga"></i></span><span>Data: ____/____/______</span></div>
+    <ol class="fp-q">${q}</ol>
+    <footer class="fp-pe">A Nossa Casa · Fichas de estudo da Ema</footer></section>`;
+}
+function htmlSolucoes(lista) {
+  return `<section class="fp quebra"><header class="fp-cab"><div><div class="fp-disc">Para os pais</div><h2 class="fp-tit">Soluções</h2></div></header>
+    ${lista.map(([d, f]) => `<div class="fp-sol"><h3>${esc(d.nome)} — ${esc(f.titulo)}</h3><ol>${f.q.map((x) => `<li>${x.t === "mc" ? LETRAS[x.c] + ") " : ""}${esc(textoCerto(x))}</li>`).join("")}</ol></div>`).join("")}</section>`;
+}
+function imprimirFichas(lista, solucoes) {
+  imprimir(lista.map(([d, f], i) => htmlFichaPapel(d, f).replace('<section class="fp">', i ? '<section class="fp quebra">' : '<section class="fp">')).join("") + (solucoes ? htmlSolucoes(lista) : ""), "retrato");
+}
+window.imprimirFichas = imprimirFichas;
+
 function imprimirEmenta() {
   const sel = E.sel, ini = E.ini;
   const pess = (i, ix) => WHO.filter((w) => sel[i + w[ix]]).map((w) => `<div><b>${w[0]}:</b> ${esc(sel[i + w[ix]])}</div>`).join("");
   const ref = (i, k) => esc(sel[i + k] || "") + (sel[i + k + "S"] ? `<div class="sal">(fazer salada)</div>` : "");
   const linhas = DIAS.map((d, i) => `<tr><th>${cap(d)}<br>${dm(somaDias(ini, i))}</th><td>${esc(sel[i + "P"] || "")}</td><td>${pess(i, 1)}</td><td>${ref(i, "A")}</td><td>${pess(i, 2)}</td><td>${ref(i, "J")}</td></tr>`).join("");
-  $("#folha").innerHTML = `<div class="folha"><div class="ftit">Menu Semanal - ${dm(ini)} a ${dm(somaDias(ini, 6))}</div>
+  const html = `<div class="folha"><div class="ftit">Menu Semanal - ${dm(ini)} a ${dm(somaDias(ini, 6))}</div>
     <table><colgroup><col style="width:21mm"><col style="width:16%"><col style="width:21%"><col style="width:13%"><col style="width:23%"><col></colgroup>
     <thead><tr><th></th><th>Pequeno-Almoço</th><th>Meio da manhã</th><th>Almoço</th><th>Meio da tarde</th><th>Jantar</th></tr></thead>
     <tbody>${linhas}</tbody></table></div>`;
-  window.print();
+  imprimir(html, "paisagem");
 }
 
 /* =====================================================================
@@ -904,7 +935,7 @@ function blocoCalendario() {
 }
 
 async function vEscola(el) {
-  el.innerHTML = cab("Escola Ema", "Calendário, estudo, testes, trabalhos, reuniões, atividades e contactos da escola.") + `<a class="estudo-cta" href="#estudo"><span class="bolha">${svg("estudo")}</span><span class="ct"><b>Estudo · fichas do 5.º ano</b><span class="det">Português, Matemática, Ciências, HGP e Inglês</span></span><span class="seta">›</span></a>` + blocoCalendario();
+  el.innerHTML = cab("Escola Ema", "Calendário, estudo, testes, trabalhos, reuniões, atividades e contactos da escola.") + `<a class="estudo-cta" href="#estudo"><span class="bolha">${svg("estudo")}</span><span class="ct"><b>Estudo · fichas do 5.º ano</b><span class="det">Para imprimir ou fazer na app · Português, Matemática, Ciências, HGP e Inglês</span></span><span class="seta">›</span></a>` + blocoCalendario();
   await seccao(el, COLS.escola_testes);
   await seccao(el, COLS.escola_eventos);
   await seccao(el, COLS.escola_atividades);
@@ -928,6 +959,13 @@ const textoCerto = (q) => (q.t === "mc" ? q.o[q.c] : q.t === "num" ? String(q.r)
 const msgNota = (c, t) => { const p = c / t; return p === 1 ? "Excelente! 🌟" : p >= 0.8 ? "Muito bem! 👏" : p >= 0.5 ? "Bom trabalho, continua! 💪" : "Vamos rever e tentar outra vez 🙂"; };
 const badge = (d, cls = "") => `<span class="sigla ${cls}" style="--c:${d.cor}">${esc(d.sigla)}</span>`;
 
+const barraImprimir = (rotulo) => `<div class="imp-barra"><button type="button" class="pri" data-imp>${svg("impressora")} ${rotulo}</button>
+  <label class="chk"><input type="checkbox" data-sol checked> Juntar folha com as soluções</label></div>`;
+function ligarImprimir(el, lista) {
+  const b = $("[data-imp]", el); if (!b) return;
+  b.onclick = () => imprimirFichas(lista, $("[data-sol]", el).checked);
+}
+
 async function vEstudo(el) {
   const [idD, idF] = ROTA_ARGS;
   const prog = ((await store.getDoc(chaveEstudo())) || {}).res || {};
@@ -939,7 +977,9 @@ async function vEstudo(el) {
     el.innerHTML = `${cab("Estudo", `Fichas do 5.º ano · ${feitas} de ${total} feitas`)}
       <div class="disc-grelha">${DISC().map((d) => { const n = d.fichas.filter((f) => prog[f.id]).length;
         return `<a class="disc" href="#estudo/${d.id}">${badge(d)}<b>${esc(d.nome)}</b><span class="det">${n} de ${d.fichas.length} fichas feitas</span>
-          <span class="prog"><i style="width:${(n / d.fichas.length) * 100}%;background:${d.cor}"></i></span></a>`; }).join("")}</div>`;
+          <span class="prog"><i style="width:${(n / d.fichas.length) * 100}%;background:${d.cor}"></i></span></a>`; }).join("")}</div>
+      <section class="seccao"><h2>Fichas para imprimir</h2><p class="det" style="margin:0">Folhas A4 para a Ema fazer à mão. Também podes imprimir por disciplina ou ficha a ficha.</p>${barraImprimir(`Imprimir todas (${total})`)}</section>`;
+    ligarImprimir(el, DISC().flatMap((d) => d.fichas.map((f) => [d, f])));
     return;
   }
   if (!ficha) {
@@ -948,12 +988,15 @@ async function vEstudo(el) {
       <section class="seccao">${disc.fichas.map((f, i) => { const r = prog[f.id];
         return `<a class="linha-l" href="#estudo/${disc.id}/${f.id}"><span class="num-f" style="--c:${disc.cor}">${i + 1}</span>
           <span class="ct"><b>${esc(f.titulo)}</b><span class="det">${esc(f.sub)} · ${f.q.length} perguntas</span></span>
-          ${r ? `<span class="tag ${r.melhor === r.total ? "ok" : ""}">${r.melhor}/${r.total}</span>` : `<span class="tag">Fazer</span>`}</a>`; }).join("")}</section>`;
+          ${r ? `<span class="tag ${r.melhor === r.total ? "ok" : ""}">${r.melhor}/${r.total}</span>` : `<span class="tag">Fazer</span>`}</a>`; }).join("")}</section>
+      <section class="seccao"><h2>Imprimir</h2>${barraImprimir(`Imprimir as ${disc.fichas.length} fichas de ${esc(disc.nome)}`)}</section>`;
+    ligarImprimir(el, disc.fichas.map((f) => [disc, f]));
     return;
   }
   const r = prog[ficha.id];
   el.innerHTML = `<a class="voltar" href="#estudo/${disc.id}">‹ ${esc(disc.nome)}</a>
     <div class="cab"><div style="display:flex;gap:14px;align-items:center">${badge(disc, "g")}<div><h1>${esc(ficha.titulo)}</h1><div class="sub2">${esc(ficha.sub)}${r ? ` · melhor nota ${r.melhor}/${r.total}` : ""}</div></div></div></div>
+    <section class="seccao">${barraImprimir("Imprimir esta ficha")}<p class="det" style="margin:0">Ou responde aqui na app e toca em Corrigir no fim.</p></section>
     <form class="ficha" id="ficha" autocomplete="off">
       ${ficha.q.map((q, i) => `<section class="perg" data-i="${i}"><div class="perg-n" style="--c:${disc.cor}">${i + 1}</div><div class="perg-c">
         <p class="perg-p">${esc(q.p)}</p>
@@ -963,6 +1006,7 @@ async function vEstudo(el) {
       <div class="nota" id="nota" hidden></div>
       <div class="acoes"><button type="submit" class="pri grande">Corrigir</button></div>
     </form>`;
+  ligarImprimir(el, [[disc, ficha]]);
   const f = $("#ficha", el);
   f.onsubmit = async (e) => {
     e.preventDefault();
@@ -1021,6 +1065,7 @@ const ICO = {
   medicos: '<path d="M12 20.5s-8-4.8-8-10.8A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.7c0 6-8 10.8-8 10.8z"/><path d="M8 12h2l1.2-2 1.6 4 1.2-2h2"/>',
   mover: '<path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/>',
   camara: '<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.5-2.5h5.6L16.3 7h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.8" r="3.3"/>',
+  impressora: '<path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/>',
   estudo: '<path d="M4 19V5.5A2.5 2.5 0 0 1 6.5 3H20v14H6.5A2.5 2.5 0 0 0 4 19.5 2.5 2.5 0 0 0 6.5 22H20v-5"/><path d="M8.5 7.5h7M8.5 11h5"/>',
   viagens: '<rect x="3.5" y="7" width="17" height="13" rx="2.5"/><path d="M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2M8 7v13M16 7v13"/>',
   calendario: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',

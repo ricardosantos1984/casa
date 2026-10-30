@@ -185,6 +185,11 @@ a.mini:hover{background:var(--hover)}
 .nota{text-align:center;padding:18px;border-radius:var(--raio-g);background:var(--acento-f);font-size:18px;font-weight:700}
 .nota-n{font-size:44px;font-weight:800;color:var(--acento);line-height:1.1}
 
+/* imprimir */
+.imp-barra{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center}
+.imp-barra .pri{display:inline-flex;align-items:center;gap:8px}
+.imp-barra .pri svg{width:20px;height:20px}
+
 /* ---------- despesas ---------- */
 .resumo{display:flex;flex-direction:column;gap:8px;padding:14px;background:var(--painel2);border-radius:var(--raio)}
 .total{font-size:26px;font-weight:800;letter-spacing:-.02em}
@@ -279,9 +284,8 @@ dialog::backdrop{background:rgba(3,8,18,.6);-webkit-backdrop-filter:blur(4px);ba
 
 /* ---------- impressão da ementa (A4 deitado, fundo branco) ---------- */
 #folha{display:none}
-@page{size:A4 landscape;margin:0}
 @media print{
-  body{background:#fff !important}
+  :root,html,body{background:#fff !important;color-scheme:light !important}
   body>*:not(#folha){display:none !important}
   #folha{display:block !important}
   body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -296,3 +300,32 @@ dialog::backdrop{background:rgba(3,8,18,.6);-webkit-backdrop-filter:blur(4px);ba
 .folha tbody th{background:#000;color:#fff;font-weight:700;font-size:10pt}
 .folha tbody tr:nth-child(3)>*{border-top:2px solid #000}
 .folha .sal{font-weight:700;font-size:8.5pt}
+
+/* ---------- fichas em papel (A4 retrato) ---------- */
+.fp{font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;font-size:11.5pt;line-height:1.35}
+.fp.quebra{break-before:page;page-break-before:always}
+.fp-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:8px}
+.fp-disc{font-size:10pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.fp-tit{font-size:17pt;margin:2px 0 0}
+.fp-sub{font-size:9.5pt;color:#444}
+.fp-nota{border:1.5px solid #000;border-radius:6px;padding:4px 10px;text-align:center;font-size:9pt;white-space:nowrap}
+.fp-nota b{font-size:12pt}
+.fp-dados{display:flex;justify-content:space-between;gap:20px;margin:4px 0 10px;font-size:11pt}
+.fp-dados span{display:flex;align-items:flex-end;gap:6px;flex:1}
+.fp-dados span:last-child{flex:none}
+.fp-q{margin:0;padding-left:22px}
+.fp-q>li{break-inside:avoid;page-break-inside:avoid;margin:0 0 9px;padding-left:2px}
+.fp-q p{margin:0 0 4px;font-weight:600}
+.fp-ops{display:grid;grid-template-columns:1fr 1fr;gap:3px 18px}
+.fp-op{display:flex;align-items:center;gap:7px}
+.fp-cx{display:inline-block;width:11px;height:11px;border:1.3px solid #000;border-radius:2px;flex:none}
+.fp-linha{display:block;border-bottom:1px solid #777;height:20px;margin:2px 0}
+.fp-linha.curta{display:inline-block;width:45mm;height:auto;margin:0;vertical-align:bottom}
+.fp-linha.larga{flex:1;width:auto;min-width:60mm}
+.fp-calcrow{display:flex;gap:10px;align-items:flex-end}
+.fp-calc{flex:1;border:1px dashed #999;border-radius:4px;height:13mm;padding:1px 6px;font-size:8pt;color:#666}
+.fp-resp{width:55mm;font-size:10.5pt}
+.fp-pe{margin-top:8px;font-size:8pt;color:#777;text-align:right}
+.fp-sol{break-inside:avoid;page-break-inside:avoid;margin-bottom:8px}
+.fp-sol h3{font-size:11pt;margin:6px 0 2px}
+.fp-sol ol{margin:0;padding-left:22px;columns:2;column-gap:20px;font-size:10pt}
