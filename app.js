@@ -521,23 +521,32 @@ const ROTA_DE = { veiculos: "veiculos", tarefas: "casa", garantias: "casa", data
 
 let FOTO;
 async function fotoFamilia() {
-  if (FOTO === undefined) { const d = await store.getDoc("foto-familia"); FOTO = d && d.img ? { x: 50, y: 35, z: 1, ...d } : null; }
+  if (FOTO === undefined) { const d = await store.getDoc("foto-familia"); FOTO = d && d.img ? { x: 50, y: 35, z: 1, modo: "inteira", ...d } : null; }
   return FOTO;
 }
-const estiloFoto = (f) => `object-position:${f.x}% ${f.y}%;transform:scale(${f.z});transform-origin:${f.x}% ${f.y}%`;
+const estiloFoto = (f) => (f.modo === "preencher" ? `object-fit:cover;object-position:${f.x}% ${f.y}%;transform:scale(${f.z});transform-origin:${f.x}% ${f.y}%` : "object-fit:contain");
+const camadasFoto = (f, alt) => `<div class="heroi-fundo" style="background-image:url('${f.img}')"></div><img class="heroi-img" alt="${alt}" src="${f.img}" style="${estiloFoto(f)}" draggable="false">`;
 function ajustarFoto() {
   const f = { ...FOTO };
   const dlg = $("#dlg");
   dlg.innerHTML = `<div class="form"><div class="pega" aria-hidden="true"></div><h2>Ajustar foto</h2>
-    <div class="heroi prev"><img class="heroi-img" alt="" src="${f.img}" style="${estiloFoto(f)}" draggable="false"></div>
-    <p class="det" style="margin:0">Arrasta a foto com o dedo para escolher a parte que aparece.</p>
-    <label class="campo"><span>Zoom</span><input type="range" id="f-zoom" min="1" max="2.5" step="0.05" value="${f.z}"></label>
+    <div class="seg" role="radiogroup" aria-label="Como mostrar a foto">
+      <button type="button" role="radio" data-modo="inteira">Foto inteira</button><button type="button" role="radio" data-modo="preencher">Preencher o espaço</button></div>
+    <div class="heroi prev">${camadasFoto(f, "")}</div>
+    <div class="so-preencher"><p class="det" style="margin:0 0 6px">Arrasta a foto com o dedo para escolher a parte que aparece.</p>
+    <label class="campo"><span>Zoom</span><input type="range" id="f-zoom" min="1" max="2.5" step="0.05" value="${f.z}"></label></div>
     <div class="acoes"><button type="button" class="sec" data-a="repor">Repor</button><span class="esp"></span><button type="button" class="sec" data-a="fechar">Cancelar</button><button type="button" class="pri" data-a="guardar">Guardar</button></div></div>`;
   const prev = $(".prev", dlg), img = $("img", prev), zoom = $("#f-zoom", dlg);
-  const aplicar = () => { img.style.cssText = estiloFoto(f); };
+  const aplicar = () => {
+    img.style.cssText = estiloFoto(f);
+    $$("[data-modo]", dlg).forEach((b) => b.setAttribute("aria-checked", b.dataset.modo === f.modo));
+    $(".so-preencher", dlg).hidden = f.modo !== "preencher";
+    prev.classList.toggle("arrastar", f.modo === "preencher");
+  };
+  $$("[data-modo]", dlg).forEach((b) => (b.onclick = () => { f.modo = b.dataset.modo; aplicar(); }));
   const lim = (v) => Math.max(0, Math.min(100, v));
   let ini = null;
-  prev.onpointerdown = (e) => { ini = { px: e.clientX, py: e.clientY, x: f.x, y: f.y }; prev.setPointerCapture(e.pointerId); };
+  prev.onpointerdown = (e) => { if (f.modo !== "preencher") return; ini = { px: e.clientX, py: e.clientY, x: f.x, y: f.y }; prev.setPointerCapture(e.pointerId); };
   prev.onpointermove = (e) => {
     if (!ini) return;
     const r = prev.getBoundingClientRect(), k = 160 / f.z;
@@ -547,12 +556,13 @@ function ajustarFoto() {
   };
   prev.onpointerup = prev.onpointercancel = () => { ini = null; };
   zoom.oninput = () => { f.z = +zoom.value; aplicar(); };
-  $("[data-a=repor]", dlg).onclick = () => { f.x = 50; f.y = 35; f.z = 1; zoom.value = 1; aplicar(); };
+  $("[data-a=repor]", dlg).onclick = () => { f.x = 50; f.y = 35; f.z = 1; f.modo = "inteira"; zoom.value = 1; aplicar(); };
   $("[data-a=fechar]", dlg).onclick = () => dlg.close();
   $("[data-a=guardar]", dlg).onclick = async () => {
-    try { await store.setDoc("foto-familia", { img: f.img, x: Math.round(f.x), y: Math.round(f.y), z: f.z }); FOTO = f; dlg.close(); aviso("Foto ajustada"); render(); }
+    try { await store.setDoc("foto-familia", { img: f.img, x: Math.round(f.x), y: Math.round(f.y), z: f.z, modo: f.modo }); FOTO = f; dlg.close(); aviso("Foto ajustada"); render(); }
     catch (err) { erro(err); }
   };
+  aplicar();
   dlg.showModal();
 }
 function reduzirImagem(file, max = 1400) {
@@ -595,7 +605,7 @@ async function vInicio(el) {
   const nada = !Object.keys(sel).some((k) => k.startsWith(String(idx)) && sel[k]);
 
   el.innerHTML = `<div class="heroi ${foto ? "" : "sem-foto"}">
-    ${foto ? `<img class="heroi-img" alt="A família" src="${foto.img}" style="${estiloFoto(foto)}">` : ""}
+    ${foto ? camadasFoto(foto, "A família") : ""}
     <div class="foto-btns">${foto ? `<button type="button" class="foto-btn" id="foto-aj">${svg("mover")}<span>Ajustar</span></button>` : ""}
     <label class="foto-btn">${svg("camara")}<span>${foto ? "Mudar" : "Pôr foto da família"}</span><input type="file" accept="image/*" id="foto-inp" hidden></label></div>
     <div class="heroi-txt"><h1>${EU ? "Olá, " + esc(EU) : "Olá!"}</h1><div class="sub2">${esc(cap(dataLonga))}</div></div>
@@ -620,7 +630,7 @@ async function vInicio(el) {
   $("#foto-inp", el).onchange = async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
     aviso("A guardar a foto…");
-    try { const img = await reduzirImagem(f); const nova = { img, x: 50, y: 35, z: 1 }; await store.setDoc("foto-familia", nova); FOTO = nova; aviso("Foto guardada"); await render(); ajustarFoto(); }
+    try { const img = await reduzirImagem(f); const nova = { img, x: 50, y: 35, z: 1, modo: "inteira" }; await store.setDoc("foto-familia", nova); FOTO = nova; aviso("Foto guardada"); await render(); ajustarFoto(); }
     catch (err) { erro(err); }
   };
   const aj = $("#foto-aj", el); if (aj) aj.onclick = ajustarFoto;
