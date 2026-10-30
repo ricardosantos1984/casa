@@ -521,45 +521,55 @@ const ROTA_DE = { veiculos: "veiculos", tarefas: "casa", garantias: "casa", data
 
 let FOTO;
 async function fotoFamilia() {
-  if (FOTO === undefined) { const d = await store.getDoc("foto-familia"); FOTO = d && d.img ? { x: 50, y: 35, z: 1, modo: "inteira", ...d } : null; }
+  if (FOTO === undefined) { const d = await store.getDoc("foto-familia"); FOTO = d && d.img ? { x: 50, y: 35, z: 1, ...d } : null; }
   return FOTO;
 }
-const estiloFoto = (f) => (f.modo === "preencher" ? `object-fit:cover;object-position:${f.x}% ${f.y}%;transform:scale(${f.z});transform-origin:${f.x}% ${f.y}%` : "object-fit:contain");
-const camadasFoto = (f, alt) => `<div class="heroi-fundo" style="background-image:url('${f.img}')"></div><img class="heroi-img" alt="${alt}" src="${f.img}" style="${estiloFoto(f)}" draggable="false">`;
+const estiloFoto = (f) => `object-position:${f.x}% ${f.y}%;transform:scale(${f.z});transform-origin:${f.x}% ${f.y}%`;
+const avatarHtml = (f, cls = "") => f ? `<span class="avatar ${cls}"><img alt="A família" src="${f.img}" style="${estiloFoto(f)}" draggable="false"></span>` : "";
+function atualizarLogo() {
+  const m = $(".marca-ico");
+  if (!m) return;
+  m.innerHTML = FOTO ? avatarHtml(FOTO, "mini") : "⌂";
+  m.classList.toggle("com-foto", !!FOTO);
+}
+async function novaFoto(file) {
+  aviso("A guardar a foto…");
+  const img = await reduzirImagem(file, 900);
+  const nova = { img, x: 50, y: 35, z: 1 };
+  await store.setDoc("foto-familia", nova);
+  FOTO = nova; atualizarLogo(); aviso("Foto guardada");
+}
 function ajustarFoto() {
   const f = { ...FOTO };
   const dlg = $("#dlg");
-  dlg.innerHTML = `<div class="form"><div class="pega" aria-hidden="true"></div><h2>Ajustar foto</h2>
-    <div class="seg" role="radiogroup" aria-label="Como mostrar a foto">
-      <button type="button" role="radio" data-modo="inteira">Foto inteira</button><button type="button" role="radio" data-modo="preencher">Preencher o espaço</button></div>
-    <div class="heroi prev">${camadasFoto(f, "")}</div>
-    <div class="so-preencher"><p class="det" style="margin:0 0 6px">Arrasta a foto com o dedo para escolher a parte que aparece.</p>
-    <label class="campo"><span>Zoom</span><input type="range" id="f-zoom" min="1" max="2.5" step="0.05" value="${f.z}"></label></div>
-    <div class="acoes"><button type="button" class="sec" data-a="repor">Repor</button><span class="esp"></span><button type="button" class="sec" data-a="fechar">Cancelar</button><button type="button" class="pri" data-a="guardar">Guardar</button></div></div>`;
-  const prev = $(".prev", dlg), img = $("img", prev), zoom = $("#f-zoom", dlg);
-  const aplicar = () => {
-    img.style.cssText = estiloFoto(f);
-    $$("[data-modo]", dlg).forEach((b) => b.setAttribute("aria-checked", b.dataset.modo === f.modo));
-    $(".so-preencher", dlg).hidden = f.modo !== "preencher";
-    prev.classList.toggle("arrastar", f.modo === "preencher");
-  };
-  $$("[data-modo]", dlg).forEach((b) => (b.onclick = () => { f.modo = b.dataset.modo; aplicar(); }));
+  dlg.innerHTML = `<div class="form"><div class="pega" aria-hidden="true"></div><h2>Foto de perfil da família</h2>
+    <div class="prev-av"><div class="avatar prev">${avatarHtml(f).replace(/^<span class="avatar ">|<\/span>$/g, "")}</div></div>
+    <p class="det" style="margin:0;text-align:center">Arrasta a foto com o dedo para a centrar no círculo.</p>
+    <label class="campo"><span>Zoom</span><input type="range" id="f-zoom" min="1" max="3" step="0.05" value="${f.z}"></label>
+    <div style="text-align:center"><label class="sec peq trocar">${svg("camara")} Escolher outra foto<input type="file" accept="image/*" id="f-nova" hidden></label></div>
+    <div class="acoes"><span class="esp"></span>
+      <button type="button" class="sec" data-a="fechar">Cancelar</button><button type="button" class="pri" data-a="guardar">Guardar</button></div></div>`;
+  const prev = $(".prev", dlg), zoom = $("#f-zoom", dlg);
+  const aplicar = () => { const img = $("img", prev); img.src = f.img; img.style.cssText = estiloFoto(f); };
   const lim = (v) => Math.max(0, Math.min(100, v));
   let ini = null;
-  prev.onpointerdown = (e) => { if (f.modo !== "preencher") return; ini = { px: e.clientX, py: e.clientY, x: f.x, y: f.y }; prev.setPointerCapture(e.pointerId); };
+  prev.onpointerdown = (e) => { ini = { px: e.clientX, py: e.clientY, x: f.x, y: f.y }; prev.setPointerCapture(e.pointerId); };
   prev.onpointermove = (e) => {
     if (!ini) return;
-    const r = prev.getBoundingClientRect(), k = 160 / f.z;
+    const r = prev.getBoundingClientRect(), k = 120 / f.z;
     f.x = lim(ini.x - ((e.clientX - ini.px) / r.width) * k);
     f.y = lim(ini.y - ((e.clientY - ini.py) / r.height) * k);
     aplicar();
   };
   prev.onpointerup = prev.onpointercancel = () => { ini = null; };
   zoom.oninput = () => { f.z = +zoom.value; aplicar(); };
-  $("[data-a=repor]", dlg).onclick = () => { f.x = 50; f.y = 35; f.z = 1; f.modo = "inteira"; zoom.value = 1; aplicar(); };
+  $("#f-nova", dlg).onchange = async (e) => {
+    const file = e.target.files && e.target.files[0]; if (!file) return;
+    try { f.img = await reduzirImagem(file, 900); f.x = 50; f.y = 35; f.z = 1; zoom.value = 1; aplicar(); } catch (err) { erro(err); }
+  };
   $("[data-a=fechar]", dlg).onclick = () => dlg.close();
   $("[data-a=guardar]", dlg).onclick = async () => {
-    try { await store.setDoc("foto-familia", { img: f.img, x: Math.round(f.x), y: Math.round(f.y), z: f.z, modo: f.modo }); FOTO = f; dlg.close(); aviso("Foto ajustada"); render(); }
+    try { await store.setDoc("foto-familia", { img: f.img, x: Math.round(f.x), y: Math.round(f.y), z: f.z }); FOTO = f; dlg.close(); atualizarLogo(); aviso("Foto guardada"); render(); }
     catch (err) { erro(err); }
   };
   aplicar();
@@ -604,11 +614,10 @@ async function vInicio(el) {
   const refeicao = (lbl, html, sal) => `<div class="ref-linha"><span class="ref-l">${lbl}</span><span class="ref-t">${html}${sal ? ` <span class="tag">+ salada</span>` : ""}</span></div>`;
   const nada = !Object.keys(sel).some((k) => k.startsWith(String(idx)) && sel[k]);
 
-  el.innerHTML = `<div class="heroi ${foto ? "" : "sem-foto"}">
-    ${foto ? camadasFoto(foto, "A família") : ""}
-    <div class="foto-btns">${foto ? `<button type="button" class="foto-btn" id="foto-aj">${svg("mover")}<span>Ajustar</span></button>` : ""}
-    <label class="foto-btn">${svg("camara")}<span>${foto ? "Mudar" : "Pôr foto da família"}</span><input type="file" accept="image/*" id="foto-inp" hidden></label></div>
-    <div class="heroi-txt"><h1>${EU ? "Olá, " + esc(EU) : "Olá!"}</h1><div class="sub2">${esc(cap(dataLonga))}</div></div>
+  el.innerHTML = `<div class="perfil">
+    ${foto ? `<button type="button" class="av-btn" id="foto-aj" aria-label="Mudar ou ajustar a foto da família">${avatarHtml(foto, "grande")}<span class="av-edit">${svg("camara")}</span></button>`
+      : `<label class="av-btn vazio-av" aria-label="Pôr foto da família"><span class="avatar grande">${svg("camara")}</span><input type="file" accept="image/*" id="foto-inp" hidden></label>`}
+    <div><h1>${EU ? "Olá, " + esc(EU) : "Olá!"}</h1><div class="sub2">${esc(cap(dataLonga))}</div>${foto ? "" : `<div class="det">Toca no círculo para pôr a foto da família.</div>`}</div>
   </div>
   <a class="hoje" href="#ementas">
     <div class="hoje-cab"><span class="bolha">${svg("ementas")}</span><h2>Hoje na ementa</h2><span class="seta">›</span></div>
@@ -627,11 +636,10 @@ async function vInicio(el) {
     ${alertas.length ? alertas.map((a) => `<a class="linha-l" href="#${a.rota}"><span class="bolha ${a.nivel}">${svg(a.ico || "calendario")}</span><span class="ct"><b>${esc(a.tit)}</b><span class="det">${esc(a.texto)}</span></span></a>`).join("") : `<p class="vazio">Nada urgente. 👍</p>`}
   </section>
   ${falta.length ? `<section class="seccao"><div class="sec-cab"><h2>Lista de compras</h2><a class="ver" href="#compras">Abrir</a></div><p class="chips">${falta.slice(0, 12).map((c) => `<span class="chip">${esc(c.nome)}</span>`).join("")}${falta.length > 12 ? `<span class="chip">+${falta.length - 12}</span>` : ""}</p></section>` : ""}`;
-  $("#foto-inp", el).onchange = async (e) => {
+  const inp = $("#foto-inp", el);
+  if (inp) inp.onchange = async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
-    aviso("A guardar a foto…");
-    try { const img = await reduzirImagem(f); const nova = { img, x: 50, y: 35, z: 1, modo: "inteira" }; await store.setDoc("foto-familia", nova); FOTO = nova; aviso("Foto guardada"); await render(); ajustarFoto(); }
-    catch (err) { erro(err); }
+    try { await novaFoto(f); await render(); ajustarFoto(); } catch (err) { erro(err); }
   };
   const aj = $("#foto-aj", el); if (aj) aj.onclick = ajustarFoto;
 }
@@ -984,9 +992,10 @@ function mostrarApp(estado) {
   $("#login").hidden = true; $("#app").hidden = false;
   $("#estado").textContent = estado;
   render();
+  fotoFamilia().then(atualizarLogo).catch(() => {});
 }
 function mostrarLogin(msg, ok) {
-  store = null; FOTO = undefined;
+  store = null; FOTO = undefined; atualizarLogo();
   $("#app").hidden = true; $("#login").hidden = false;
   const m = $("#login-msg"); m.textContent = msg || ""; m.classList.toggle("ok", !!ok);
 }
