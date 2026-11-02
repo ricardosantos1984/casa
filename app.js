@@ -1005,11 +1005,24 @@ function desenharEmenta(el) {
 }
 
 
+// Encolhe a letra da folha da ementa até tudo caber numa página A4 deitada
+function ajustarFolha() {
+  const caixa = $("#folha"), f = $(".folha", caixa);
+  if (!f) return;
+  const antes = caixa.getAttribute("style") || "";
+  caixa.setAttribute("style", "display:block;position:absolute;left:-10000px;top:0");
+  const tab = $("table", f), tit = $(".ftit", f);
+  let fs = 9.5;
+  f.style.setProperty("--fs", fs + "pt");
+  while (fs > 6 && tab.scrollHeight + tit.offsetHeight > f.clientHeight + 1) { fs -= 0.25; f.style.setProperty("--fs", fs + "pt"); }
+  caixa.setAttribute("style", antes);
+}
 function imprimir(html, orientacao) {
   $("#folha").innerHTML = html;
   let st = $("#pag-css");
   if (!st) { st = document.createElement("style"); st.id = "pag-css"; document.head.appendChild(st); }
-  st.textContent = orientacao === "retrato" ? "@page{size:A4 portrait;margin:12mm 14mm}" : "@page{size:A4 landscape;margin:0}";
+  st.textContent = orientacao === "retrato" ? "@page{size:A4 portrait;margin:12mm 14mm}" : "@page{size:A4 landscape;margin:8mm}";
+  if (orientacao !== "retrato") ajustarFolha();
   window.print();
 }
 const LETRAS = "abcdefgh";
