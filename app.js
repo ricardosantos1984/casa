@@ -827,6 +827,46 @@ function reduzirImagem(file, max = 1400) {
   });
 }
 
+
+/* ---------- notificações no telemóvel (Web Push) ---------- */
+const b64uParaBytes = (s) => { const p = "=".repeat((4 - (s.length % 4)) % 4); const b = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(b, (c) => c.charCodeAt(0)); };
+const pushSuportado = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const ehIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+const instalada = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+async function estadoPush() {
+  if (!pushSuportado()) return ehIOS() && !instalada() ? "instalar" : "nao";
+  if (Notification.permission === "denied") return "negado";
+  try { const reg = await navigator.serviceWorker.ready; const s = await reg.pushManager.getSubscription(); return s ? "ativo" : "desligado"; } catch (e) { return "desligado"; }
+}
+async function ativarPush() {
+  const cfg = await store.getDoc("push-config");
+  if (!cfg || !cfg.vapid) throw new Error("As notificações ainda não estão configuradas no n8n.");
+  if ((await Notification.requestPermission()) !== "granted") throw new Error("Não deste permissão para notificações.");
+  const reg = await navigator.serviceWorker.ready;
+  let s = await reg.pushManager.getSubscription();
+  if (!s) s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uParaBytes(cfg.vapid) });
+  const j = s.toJSON();
+  const ja = (await store.list("push")).find((x) => x.endpoint === j.endpoint);
+  const d = { endpoint: j.endpoint, keys: j.keys, quem: EU || "", aparelho: ehIOS() ? "iPhone/iPad" : /android/i.test(navigator.userAgent) ? "Android" : "Computador", desde: hoje() };
+  if (ja) await store.update(ja.id, { ...ja, ...d, id: undefined }); else await store.add("push", d);
+}
+async function desativarPush() {
+  const reg = await navigator.serviceWorker.ready; const s = await reg.pushManager.getSubscription();
+  if (!s) return;
+  const ja = (await store.list("push")).find((x) => x.endpoint === s.endpoint);
+  await s.unsubscribe(); if (ja) await store.remove(ja.id);
+}
+async function cartaoPush(el) {
+  const st = await estadoPush();
+  if (st === "nao") return;
+  const txt = { instalar: "Para receberes notificações no iPhone, instala a app: Partilhar → Adicionar ao ecrã principal, e abre-a pelo ícone.", negado: "As notificações estão bloqueadas. Ativa-as nas definições do telemóvel para esta app.", desligado: "Recebe no telemóvel os avisos do dia: testes da Ema, consultas, aniversários, carro e orçamento.", ativo: "Notificações ligadas neste aparelho. ✅" }[st];
+  const bt = st === "desligado" ? `<button type="button" class="pri" id="push-on">🔔 Ativar notificações</button>` : st === "ativo" ? `<button type="button" class="sec" id="push-off">Desligar</button>` : "";
+  el.insertAdjacentHTML("beforeend", `<section class="seccao push-cartao"><div class="sec-cab"><h2>🔔 Notificações</h2>${bt}</div><p class="det" style="margin:0">${txt}</p></section>`);
+  const on = $("#push-on", el), off = $("#push-off", el);
+  if (on) on.onclick = async () => { on.disabled = true; try { await ativarPush(); aviso("Notificações ligadas 🔔"); await render(); } catch (e) { on.disabled = false; erro(e); } };
+  if (off) off.onclick = async () => { try { await desativarPush(); aviso("Notificações desligadas"); await render(); } catch (e) { erro(e); } };
+}
+
 async function vInicio(el) {
   const ini = sabadoDe(hoje()), idx = Math.round((deIso(hoje()) - deIso(ini)) / 86400000);
   const ids = Object.keys(ROTA_DE);
@@ -880,6 +920,8 @@ async function vInicio(el) {
     try { await novaFoto(f); await render(); ajustarFoto(); } catch (err) { erro(err); }
   };
   const aj = $("#foto-aj", el); if (aj) aj.onclick = ajustarFoto;
+  const stp = await estadoPush().catch(() => "nao");
+  if (stp !== "ativo" && stp !== "nao") await cartaoPush(el);
 }
 
 /* =====================================================================
@@ -1887,6 +1929,7 @@ async function vDados(el) {
       }
     } catch (err) { erro(err); }
   };
+  await cartaoPush(el);
 }
 
 async function restaurarCopia(file) {
