@@ -1357,8 +1357,40 @@ function blocoCalendario() {
     ${CAL_ESCOLAR.map(linha).join("")}</section>`;
 }
 
+
+/* ---------- horário semanal da Ema (documento "horario-ema") ---------- */
+const COR_HOR = { PORT: "#4C9BFF", MAT: "#F2994A", ING: "#B07CFF", HGP: "#2FB673", CN: "#2DC5D9", EMUS: "#FF6B8A", EV: "#E8C547", ET: "#C77DFF", CD: "#7FD1F5", TIC: "#6FCF97", EF: "#20A86B", AEST: "#9AA6BD", INST: "#FFB45E", TRAMP: "#FF7AC6" };
+const DIAS_UTEIS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
+const celulaHor = (c) => (Array.isArray(c) ? c : c ? [c] : []).map((x) => `<div class="hc" style="--c:${COR_HOR[x.c] || "#9AA6BD"}"><b>${esc(x.t)}</b>${x.s ? `<span>${esc(x.s)}</span>` : ""}</div>`).join("");
+function tabelaHorario(h, hoje) {
+  const cab = `<thead><tr><th></th>${DIAS_UTEIS.map((d, i) => `<th class="${i === hoje ? "hj" : ""}">${d}</th>`).join("")}</tr></thead>`;
+  const linhas = h.tempos.map((t, r) => `<tr><th>${esc(t[0])}<br>${esc(t[1])}</th>${DIAS_UTEIS.map((_, d) => `<td class="${d === hoje ? "hj" : ""}">${celulaHor((h.grelha[d] || [])[r])}</td>`).join("")}</tr>`).join("");
+  return `<table class="hor">${cab}<tbody>${linhas}</tbody></table>`;
+}
+function blocoHorario(h) {
+  if (!h || !h.tempos) return "";
+  const dw = new Date().getDay(), hoje = dw >= 1 && dw <= 5 ? dw - 1 : -1;
+  return `<section class="seccao" id="horario"><div class="sec-cab"><h2>Horário da Ema</h2><button type="button" class="sec" id="hor-imp">${svg("impressora")} Imprimir</button></div>
+    <div class="hor-tabs" role="tablist">${DIAS_UTEIS.map((d, i) => `<button type="button" role="tab" data-hd="${i}" aria-selected="${i === Math.max(hoje, 0)}">${d.slice(0, 3)}</button>`).join("")}<button type="button" role="tab" data-hd="all" aria-selected="false">Semana</button></div>
+    <div class="hor-wrap" data-d="${Math.max(hoje, 0)}">${tabelaHorario(h, hoje)}</div>
+    ${h.nota ? `<p class="det" style="margin:0">${esc(h.nota)}</p>` : ""}</section>`;
+}
+function imprimirHorario(h) {
+  imprimir(`<div class="folha fhor"><div class="ftit">${esc(h.titulo || "Horário da Ema")}</div>${tabelaHorario(h, -1)}</div>`, "paisagem");
+}
+
 async function vEscola(el) {
   el.innerHTML = cab("Escola Ema", "Calendário, estudo, testes, trabalhos, reuniões, atividades e contactos da escola.") + `<a class="estudo-cta" href="#estudo"><span class="bolha">${svg("estudo")}</span><span class="ct"><b>Estudo · fichas do 5.º ano</b><span class="det">Para imprimir ou fazer na app · Português, Matemática, Ciências, HGP e Inglês</span></span><span class="seta">›</span></a>` + blocoCalendario();
+  const hor = await store.getDoc("horario-ema");
+  if (hor && hor.tempos) {
+    el.insertAdjacentHTML("beforeend", blocoHorario(hor));
+    $("#hor-imp", el).onclick = () => imprimirHorario(hor);
+    $(".hor-tabs", el).onclick = (ev) => {
+      const b = ev.target.closest("[data-hd]"); if (!b) return;
+      $(".hor-wrap", el).dataset.d = b.dataset.hd;
+      $(".hor-tabs", el).querySelectorAll("[data-hd]").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+    };
+  }
   await seccao(el, COLS.escola_testes);
   await seccao(el, COLS.escola_eventos);
   await seccao(el, COLS.escola_atividades);

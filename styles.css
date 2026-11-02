@@ -340,6 +340,8 @@ dialog::backdrop{background:rgba(3,8,18,.6);-webkit-backdrop-filter:blur(4px);ba
   body>*:not(#folha){display:none !important}
   #folha{display:block !important}
   body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  html,body{margin:0 !important;padding:0 !important;min-height:0 !important;height:auto !important}
+  .folha{break-after:avoid;page-break-after:avoid}
 }
 .folha{width:281mm;height:192mm;padding:0;box-sizing:border-box;font-family:Calibri,Carlito,Arial,sans-serif;color:#000;background:#fff;overflow:hidden;display:flex;flex-direction:column;--fs:9.5pt}
 .folha .ftit{flex:0 0 auto;height:10mm;line-height:10mm;background:#000;color:#fff;text-align:center;font-size:18pt;font-weight:700}
@@ -351,6 +353,27 @@ dialog::backdrop{background:rgba(3,8,18,.6);-webkit-backdrop-filter:blur(4px);ba
 .folha tbody tr:nth-child(3)>*{border-top:2px solid #000}
 .folha td div{margin:0.3mm 0}
 .folha .sal{font-weight:700;font-size:8.5pt}
+
+
+/* horário semanal */
+#hor-imp{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
+#hor-imp svg{width:18px;height:18px}
+.hor-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.hor{width:100%;min-width:620px;border-collapse:separate;border-spacing:3px;table-layout:fixed}
+.hor thead th{font-size:13px;font-weight:700;color:var(--suave);padding:6px 2px}
+.hor thead th.hj{color:var(--acento)}
+.hor tbody th{width:58px;font-size:11px;font-weight:600;color:var(--suave);line-height:1.25;text-align:center}
+.hor td{background:var(--painel2);border-radius:8px;height:46px;padding:2px;vertical-align:middle}
+.hor td.hj{background:var(--hover)}
+.hc{border-left:4px solid var(--c);background:color-mix(in srgb,var(--c) 22%,transparent);border-radius:6px;padding:3px 6px;margin:1px 0;font-size:12px;line-height:1.2}
+.hc b{display:block;font-weight:700}
+.hc span{color:var(--suave);font-size:11px}
+.folha.fhor .hor{min-width:0;height:100%;border-collapse:collapse;border-spacing:0}
+.folha.fhor .hor thead th{color:#000;background:#d9d9d9;border:1px solid #000;font-size:11pt;height:8mm}
+.folha.fhor .hor tbody th{background:#000;color:#fff;font-size:9.5pt;width:22mm;border:1px solid #000}
+.folha.fhor .hor td{background:#fff;border:1px solid #000;border-radius:0;height:auto;padding:1mm}
+.folha.fhor .hc{background:color-mix(in srgb,var(--c) 28%,#fff);border-left:3mm solid var(--c);border-radius:0;font-size:10.5pt;color:#000;padding:1mm 2mm}
+.folha.fhor .hc span{color:#333;font-size:9pt}
 
 /* ---------- fichas em papel (A4 retrato) ---------- */
 .fp{font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;font-size:11.5pt;line-height:1.35}
@@ -380,3 +403,18 @@ dialog::backdrop{background:rgba(3,8,18,.6);-webkit-backdrop-filter:blur(4px);ba
 .fp-sol{break-inside:avoid;page-break-inside:avoid;margin-bottom:8px}
 .fp-sol h3{font-size:11pt;margin:6px 0 2px}
 .fp-sol ol{margin:0;padding-left:22px;columns:2;column-gap:20px;font-size:10pt}
+.folha.fhor tbody tr:nth-child(3)>*{border-top-width:1px}
+.folha.fhor .hor thead th:first-child{width:22mm;background:#000}
+.hor thead th:first-child{width:58px}
+.hor-tabs{display:none;gap:6px;flex-wrap:wrap}
+.hor-tabs button{min-height:40px;padding:0 12px;border-radius:999px;background:var(--painel2);color:var(--suave);border:1px solid var(--linha);font-weight:600}
+.hor-tabs button[aria-selected="true"]{background:var(--acento);color:var(--acento-txt);border-color:var(--acento)}
+@media (max-width:700px){
+  .hor-tabs{display:flex}
+  .hor-wrap:not([data-d="all"]) .hor{min-width:0}
+  .hor-wrap[data-d="0"] .hor tr>*:not(:first-child):not(:nth-child(2)){display:none}
+  .hor-wrap[data-d="1"] .hor tr>*:not(:first-child):not(:nth-child(3)){display:none}
+  .hor-wrap[data-d="2"] .hor tr>*:not(:first-child):not(:nth-child(4)){display:none}
+  .hor-wrap[data-d="3"] .hor tr>*:not(:first-child):not(:nth-child(5)){display:none}
+  .hor-wrap[data-d="4"] .hor tr>*:not(:first-child):not(:nth-child(6)){display:none}
+}
