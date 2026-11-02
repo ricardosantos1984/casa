@@ -107,3 +107,9 @@ Sempre que houver ficheiros novos, faz **Add file → Upload files** no reposit�
 - **Plano gratuito do Supabase:** um projeto sem nenhuma utilização durante cerca de uma semana pode ser pausado. Basta entrar no painel do Supabase e carregar em *Restore*. Com uso normal da aplicação, isto não acontece.
 - **Cópias de segurança:** no Supabase, em **Table Editor → itens / documentos**, podes exportar para CSV.
 - **No telemóvel:** abre o site e escolhe **Adicionar ao ecrã principal**. Fica como uma app.
+
+## Notificações no telemóvel (GitHub Actions)
+
+Todos os dias por volta das 8h05 (hora de Lisboa) o GitHub corre `scripts/avisos.mjs`, que lê a app e envia uma notificação com os avisos do dia para os telemóveis onde se carregou em **Ativar notificações**. Não depende do PC estar ligado.
+
+Segredos em *Settings → Secrets and variables → Actions*: `CASA_EMAIL`, `CASA_SENHA` (conta-robô) e `VAPID_PRIVADA` (criada em *Gerir dados → Configurar notificações*). Para testar: *Actions → Avisos do dia → Run workflow*.

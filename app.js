@@ -856,7 +856,35 @@ async function desativarPush() {
   const ja = (await store.list("push")).find((x) => x.endpoint === s.endpoint);
   await s.unsubscribe(); if (ja) await store.remove(ja.id);
 }
-async function cartaoPush(el) {
+async function configurarPush(el) {
+  const cfg = await store.getDoc("push-config");
+  if (cfg && cfg.vapid) return true;
+  el.insertAdjacentHTML("beforeend", `<section class="seccao" id="push-setup"><div class="sec-cab"><h2>🔔 Configurar notificações (uma vez)</h2></div>
+    <p class="det" style="margin:0">Cria as chaves das notificações. A chave pública fica na app; a chave privada só aparece aqui, para a colares nos <b>Secrets</b> do GitHub (não a envies a ninguém).</p>
+    <div><button type="button" class="pri" id="push-gerar">Criar chaves</button></div><div id="push-res"></div></section>`);
+  $("#push-gerar", el).onclick = async () => {
+    try {
+      const k = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+      const priv = await crypto.subtle.exportKey("jwk", k.privateKey);
+      const raw = new Uint8Array(await crypto.subtle.exportKey("raw", k.publicKey));
+      const pub = btoa(String.fromCharCode(...raw)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      const segredo = JSON.stringify({ kty: priv.kty, crv: priv.crv, x: priv.x, y: priv.y, d: priv.d });
+      await store.setDoc("push-config", { vapid: pub, desde: hoje() });
+      $("#push-gerar", el).remove();
+      $("#push-res", el).innerHTML = `<ol class="det" style="margin:0;padding-left:20px">
+        <li>Copia a chave privada abaixo.</li>
+        <li>Abre <a href="https://github.com/ricardosantos1984/casa/settings/secrets/actions/new" target="_blank" rel="noopener">GitHub → casa → Secrets → New secret</a>, nome <b>VAPID_PRIVADA</b>, cola e grava.</li>
+        <li>Volta à página inicial e carrega em “Ativar notificações”.</li></ol>
+        <textarea readonly rows="4" id="push-chave" style="font-family:monospace;font-size:13px;min-height:90px;padding:10px">${esc(segredo)}</textarea>
+        <div><button type="button" class="sec" id="push-copiar">Copiar chave privada</button></div>`;
+      $("#push-copiar", el).onclick = async () => { try { await navigator.clipboard.writeText(segredo); aviso("Copiada"); } catch (e) { $("#push-chave", el).select(); } };
+    } catch (e) { erro(e); }
+  };
+  return false;
+}
+async function cartaoPush(el, gerir) {
+  if (gerir) { if (!(await configurarPush(el))) return; }
+  else { const cfg = await store.getDoc("push-config"); if (!cfg || !cfg.vapid) return; }
   const st = await estadoPush();
   if (st === "nao") return;
   const txt = { instalar: "Para receberes notificações no iPhone, instala a app: Partilhar → Adicionar ao ecrã principal, e abre-a pelo ícone.", negado: "As notificações estão bloqueadas. Ativa-as nas definições do telemóvel para esta app.", desligado: "Recebe no telemóvel os avisos do dia: testes da Ema, consultas, aniversários, carro e orçamento.", ativo: "Notificações ligadas neste aparelho. ✅" }[st];
@@ -1929,7 +1957,7 @@ async function vDados(el) {
       }
     } catch (err) { erro(err); }
   };
-  await cartaoPush(el);
+  await cartaoPush(el, true);
 }
 
 async function restaurarCopia(file) {

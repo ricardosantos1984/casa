@@ -1,0 +1,30 @@
+name: Avisos do dia (notificações)
+
+on:
+  schedule:
+    - cron: "5 7,8 * * *"   # 8h05 em Lisboa (inverno e verão); o script ignora a hora errada
+  workflow_dispatch:
+    inputs:
+      teste:
+        description: "Enviar só uma notificação de teste?"
+        type: choice
+        options: ["sim", "não"]
+        default: "sim"
+
+jobs:
+  avisos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Enviar avisos
+        env:
+          CASA_EMAIL: ${{ secrets.CASA_EMAIL }}
+          CASA_SENHA: ${{ secrets.CASA_SENHA }}
+          VAPID_PRIVADA: ${{ secrets.VAPID_PRIVADA }}
+          TESTE: ${{ github.event_name == 'workflow_dispatch' && inputs.teste == 'sim' && 'sim' || 'não' }}
+          FORCAR: ${{ github.event_name == 'workflow_dispatch' && 'sim' || 'não' }}
+        run: node scripts/avisos.mjs
