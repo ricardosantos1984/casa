@@ -1,0 +1,6 @@
+{
+  "name": "casa-atalho",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "22.x" }
+}

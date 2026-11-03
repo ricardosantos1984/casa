@@ -121,3 +121,13 @@ Segredos em *Settings → Secrets and variables → Actions*: `CASA_EMAIL`, `CAS
 
 Regras (ficam na base de dados, não só na app): a Ema só vê as secções escolhidas; nas compras pode ver e acrescentar (não risca nem apaga);
 nas tarefas pode marcar o que fez; no estudo guarda o progresso das fichas; o resto é só de leitura.
+
+## Acrescentar às compras pela Siri (Vercel)
+
+A pasta `atalho/` tem uma pequena função publicada na Vercel (projeto `casa-atalho`), em
+`https://casa-atalho.vercel.app/api/compras`. O Atalho do iPhone envia o que se ditou e a função
+acrescenta os artigos à lista (com a secção certa e sem repetir o que já lá está).
+
+Variáveis na Vercel (*casa-atalho → Settings → Environment Variables*): `ATALHO_TOKEN` (código que o
+Atalho envia), `CASA_EMAIL` e `CASA_SENHA` (a mesma conta-robô do GitHub Actions). Depois de mudar
+variáveis, é preciso voltar a publicar (*Deployments → ⋯ → Redeploy*).
