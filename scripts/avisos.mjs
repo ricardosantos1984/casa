@@ -37,13 +37,14 @@ const proxAnual = (s) => { const a = +hojeIso.slice(0, 4); let x = a + s.slice(4
 
 // ---------- dados ----------
 const itens = await pedir(SB + "/rest/v1/itens?select=id,modulo,dados", { headers: H });
-const docs = await pedir(SB + "/rest/v1/documentos?select=id,dados&id=in.(orcamento,push-config)", { headers: H });
+const docs = await pedir(SB + "/rest/v1/documentos?select=id,dados&id=in.(orcamento,push-config,horario-ema)", { headers: H });
 const por = {}; itens.forEach((i) => (por[i.modulo] = por[i.modulo] || []).push(i.dados || {}));
 const L = (m) => por[m] || [];
 
 // ---------- avisos (mesmas regras dos avisos das 8h12) ----------
 const avisos = [];
-const add = (n, ico, txt) => avisos.push({ n, txt: ico + " " + txt });
+let EMA = false; // marca os avisos que também vão para o telemóvel da Ema
+const add = (n, ico, txt) => avisos.push({ n, txt: ico + " " + txt, ema: EMA });
 const prazo = (s, janela, ico, txt) => { if (!s) return; const n = diff(s); if (n <= janela) add(n, n < 0 ? "🔴" : ico, txt + ": " + fmt(s) + " (" + rel(n) + ")"); };
 L("veiculos").forEach((v) => {
   prazo(v.inspecao, 30, "🚗", (v.nome || "Carro") + " — inspeção"); prazo(v.seguro, 30, "🚗", (v.nome || "Carro") + " — seguro");
@@ -53,12 +54,20 @@ L("veiculos").forEach((v) => {
 L("tarefas").forEach((t) => prazo(t.proxima, 7, "🏠", t.desc));
 L("garantias").forEach((g) => { if (g.fim && diff(g.fim) >= 0) prazo(g.fim, 30, "🧾", "Garantia de " + g.aparelho + " acaba"); });
 L("documentos").forEach((x) => prazo(x.validade, 60, "🪪", (x.doc || "Documento") + " de " + (x.pessoa || "") + " — renovar"));
-L("datas").forEach((x) => { if (!x.data) return; const s = x.anual ? proxAnual(x.data) : x.data; const n = diff(s); if (n >= 0 && n <= 7) add(n, x.desc && /anivers/i.test(x.desc) ? "🎂" : "📅", x.desc + ": " + fmt(s) + " (" + rel(n) + ")"); });
+EMA = true;
 L("aniversarios").forEach((x) => { if (!x.nascimento) return; const s = proxAnual(x.nascimento), n = diff(s); if (n >= 0 && n <= 7) add(n, "🎂", (n === 0 ? "Hoje é o aniversário de " + x.nome : "Aniversário de " + x.nome + " " + rel(n)) + " — faz " + (+s.slice(0, 4) - +x.nascimento.slice(0, 4)) + " anos"); });
-L("ferias").forEach((x) => { if (!x.inicio) return; const n = diff(x.inicio); if (n >= 0 && n <= 7) add(n, "🌴", x.quem + " — " + (x.tipo || "Férias") + ": começam " + rel(n)); });
-L("consultas").forEach((c) => { if (!c.data) return; const n = diff(c.data); if (n >= 0 && n <= 3) add(n, "🩺", (c.pessoa || "") + " — " + (c.esp || "consulta") + " " + rel(n) + (c.hora ? " às " + c.hora : "")); });
 L("escola_testes").forEach((t) => { if (!t.data || t.nota) return; const n = diff(t.data); if (n >= 0 && n <= 3) add(n, "📝", "Ema — " + (t.tipo || "Teste") + " de " + t.disciplina + " " + rel(n)); });
 L("escola_eventos").forEach((e) => { if (!e.data) return; const n = diff(e.data); if (n >= 0 && n <= 3) add(n, "🏫", "Escola — " + e.desc + " " + rel(n) + (e.hora ? " às " + e.hora : "")); });
+// Calendário escolar (Agrupamento de Escolas Templários, 2026/27)
+[["1.ª interrupção", "2026-10-26", "2026-10-30"], ["Natal", "2026-12-23", "2026-12-31"], ["3.ª interrupção", "2027-02-01", "2027-02-05"], ["Carnaval", "2027-02-08", "2027-02-10"], ["Feriado municipal de Tomar", "2027-03-01", "2027-03-01"], ["Páscoa", "2027-03-25", "2027-04-02"], ["Último dia de aulas", "2027-06-11", "2027-06-11"]]
+  .forEach(([nome, a, b]) => { const n = diff(a); if (n >= 0 && n <= 3) add(n, "🎒", "Ema — " + nome + (a !== b ? " (" + fmt(a) + " a " + fmt(b) + ")" : "") + " " + rel(n)); });
+// Atividades de hoje (Instituto, Trampolins) a partir do horário
+{ const hor = ((docs.find((d) => d.id === "horario-ema") || {}).dados || {}); const wd = new Date(hojeIso + "T12:00:00Z").getUTCDay();
+  if (hor.grelha && wd >= 1 && wd <= 5) (hor.grelha[wd - 1] || []).flat().filter((c) => c && (c.c === "INST" || c.c === "TRAMP")).forEach((c) => add(0, c.c === "TRAMP" ? "🤸" : "📚", "Hoje: " + c.t + " às " + c.s)); }
+EMA = false;
+L("datas").forEach((x) => { if (!x.data) return; const s = x.anual ? proxAnual(x.data) : x.data; const n = diff(s); if (n >= 0 && n <= 7) add(n, x.desc && /anivers/i.test(x.desc) ? "🎂" : "📅", x.desc + ": " + fmt(s) + " (" + rel(n) + ")"); });
+L("ferias").forEach((x) => { if (!x.inicio) return; const n = diff(x.inicio); if (n >= 0 && n <= 7) add(n, "🌴", x.quem + " — " + (x.tipo || "Férias") + ": começam " + rel(n)); });
+L("consultas").forEach((c) => { if (!c.data) return; const n = diff(c.data); if (n >= 0 && n <= 3) add(n, "🩺", (c.pessoa || "") + " — " + (c.esp || "consulta") + " " + rel(n) + (c.hora ? " às " + c.hora : "")); });
 L("viagens").forEach((v) => { if (!v.ida || v.estado === "Feita") return; const n = diff(v.ida); if (n >= 0 && n <= 7) add(n, "✈️", "Viagem a " + v.destino + ": partida " + rel(n)); });
 const orc = ((docs.find((d) => d.id === "orcamento") || {}).dados || {});
 const mes = hojeIso.slice(0, 7), gasto = {};
@@ -67,13 +76,15 @@ Object.entries(orc.cat || {}).forEach(([c, lim]) => { const g = gasto[c] || 0; i
 avisos.sort((a, b) => a.n - b.n);
 
 // ---------- notificação ----------
-let titulo, corpo;
-if (TESTE) { titulo = "🔔 Teste da app"; corpo = "As notificações de A Nossa Casa estão a funcionar (enviadas pelo GitHub)."; }
-else if (!avisos.length) { console.log("Sem avisos hoje — não envio nada."); process.exit(0); }
-else {
-  titulo = "🏠 " + avisos.length + (avisos.length === 1 ? " aviso" : " avisos") + " para hoje";
-  corpo = avisos.slice(0, 6).map((a) => a.txt).join("\n") + (avisos.length > 6 ? "\n+ " + (avisos.length - 6) + " na app" : "");
-}
+// Cada aparelho recebe a sua mensagem: a Ema só recebe o que é dela (escola, atividades, aniversários)
+const mensagem = (quem) => {
+  if (TESTE) return { titulo: "🔔 Teste da app", corpo: "As notificações de A Nossa Casa estão a funcionar (enviadas pelo GitHub)." };
+  const lista = /^ema\b/i.test(String(quem || "").trim()) ? avisos.filter((a) => a.ema) : avisos;
+  if (!lista.length) return null;
+  return { titulo: "🏠 " + lista.length + (lista.length === 1 ? " aviso" : " avisos") + " para hoje",
+    corpo: lista.slice(0, 6).map((a) => a.txt).join("\n") + (lista.length > 6 ? "\n+ " + (lista.length - 6) + " na app" : "") };
+};
+if (!TESTE && !avisos.length) { console.log("Sem avisos hoje — não envio nada."); process.exit(0); }
 
 // ---------- Web Push (RFC 8291 + VAPID), sem bibliotecas ----------
 const b64u = (b) => Buffer.from(b).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -103,11 +114,13 @@ const cifrar = (sub, texto) => {
 };
 const subs = itens.filter((i) => i.modulo === "push" && i.dados && i.dados.endpoint);
 if (!subs.length) { console.log("Nenhum telemóvel com notificações ativadas."); process.exit(0); }
-const msg = JSON.stringify({ titulo, corpo, url: "./", tag: "avisos-" + hojeIso });
 for (const s of subs) {
   const d = s.dados, aud = new URL(d.endpoint).origin;
+  const m = mensagem(d.quem);
+  if (!m) { console.log((d.quem || "?") + " · " + d.aparelho + ": nada para esta pessoa hoje"); continue; }
+  const msg = JSON.stringify({ titulo: m.titulo, corpo: m.corpo, url: "./", tag: "avisos-" + hojeIso });
   const r = await fetch(d.endpoint, { method: "POST", body: cifrar(d, msg), headers: { Authorization: "vapid t=" + jwt(aud) + ", k=" + publica, "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream", TTL: "86400", Urgency: "normal" } });
   if (r.status === 404 || r.status === 410) { await fetch(SB + "/rest/v1/itens?id=eq." + s.id, { method: "DELETE", headers: H }); console.log((d.quem || "?") + " · " + d.aparelho + ": registo antigo apagado"); }
   else console.log((d.quem || "?") + " · " + d.aparelho + ": " + r.status + (r.ok ? "" : " " + (await r.text()).slice(0, 200)));
 }
-console.log(titulo + "\n" + corpo);
+console.log(avisos.map((a) => (a.ema ? "[Ema] " : "") + a.txt).join("\n"));
