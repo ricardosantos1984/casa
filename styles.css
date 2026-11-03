@@ -418,3 +418,8 @@ dialog::backdrop{background:rgba(3,8,18,.6);-webkit-backdrop-filter:blur(4px);ba
   .hor-wrap[data-d="3"] .hor tr>*:not(:first-child):not(:nth-child(5)){display:none}
   .hor-wrap[data-d="4"] .hor tr>*:not(:first-child):not(:nth-child(6)){display:none}
 }
+
+/* ---------- acessos das crianças ---------- */
+.acessos-l { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 16px; margin: 10px 0; }
+.acessos-l .det { font-size: 13px; }
+body.crianca [data-ocultar], body.crianca [data-repor] { display: none !important; }

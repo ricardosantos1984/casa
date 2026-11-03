@@ -113,3 +113,11 @@ Sempre que houver ficheiros novos, faz **Add file → Upload files** no reposit�
 Todos os dias por volta das 8h05 (hora de Lisboa) o GitHub corre `scripts/avisos.mjs`, que lê a app e envia uma notificação com os avisos do dia para os telemóveis onde se carregou em **Ativar notificações**. Não depende do PC estar ligado.
 
 Segredos em *Settings → Secrets and variables → Actions*: `CASA_EMAIL`, `CASA_SENHA` (conta-robô) e `VAPID_PRIVADA` (criada em *Gerir dados → Configurar notificações*). Para testar: *Actions → Avisos do dia → Run workflow*.
+
+## Acessos da Ema (criança)
+
+1. No Supabase: **SQL Editor → New query**, colar o ficheiro `acessos.sql` e carregar em **Run** (só uma vez).
+2. Na app (como pai/mãe): **Gerir dados → Acessos da Ema** para escolher as secções que ela vê.
+
+Regras (ficam na base de dados, não só na app): a Ema só vê as secções escolhidas; nas compras pode ver e acrescentar (não risca nem apaga);
+nas tarefas pode marcar o que fez; no estudo guarda o progresso das fichas; o resto é só de leitura.

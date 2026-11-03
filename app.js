@@ -9,6 +9,9 @@ const PESSOAS = C.PESSOAS || ["Ricardo", "Carolina", "Ema"];
 let EU = "";          // nome de quem entrou
 let sb = null;        // cliente Supabase
 let store = null;     // camada de dados
+let PAPEL = "adulto"; // "adulto" ou "crianca" (ver acessos.sql)
+let SECOES_OK = [];   // secções que uma criança pode ver
+const CRIANCA = () => PAPEL === "crianca";
 
 /* ---------- utilitários ---------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -597,7 +600,7 @@ async function seccao(el, col, { filtro, topo, titulo } = {}) {
   box.className = "seccao";
   box.innerHTML = `<div class="sec-cab"><h2>${esc(titulo || col.nome)}</h2>
     <input type="search" placeholder="Procurar…" aria-label="Procurar em ${esc(col.nome)}">
-    <button class="pri">+ Adicionar</button></div><div class="topo"></div><div class="lista"></div>`;
+    ${CRIANCA() ? "" : `<button class="pri">+ Adicionar</button>`}</div><div class="topo"></div><div class="lista"></div>`;
   el.appendChild(box);
   const q = $("input", box), lista = $(".lista", box);
   const desenhar = () => {
@@ -609,8 +612,9 @@ async function seccao(el, col, { filtro, topo, titulo } = {}) {
   };
   desenhar();
   q.oninput = desenhar;
-  $(".pri", box).onclick = () => abrirForm(col, null);
+  if (!CRIANCA()) $(".pri", box).onclick = () => abrirForm(col, null);
   const abrir = async (e) => {
+    if (CRIANCA()) return;
     const a = e.target.closest("[data-acao]");
     if (a) { e.stopPropagation(); try { await col.acao.fn(itens.find((x) => x.id === a.dataset.acao)); render(); } catch (err) { erro(err); } return; }
     if (e.target.closest("a")) return;
@@ -895,7 +899,63 @@ async function cartaoPush(el, gerir) {
   if (off) off.onclick = async () => { try { await desativarPush(); aviso("Notificações desligadas"); await render(); } catch (e) { erro(e); } };
 }
 
+/* ---------- página inicial das crianças (só o que os pais deixaram ver) ---------- */
+async function vInicioCrianca(el) {
+  const ok = (r) => podeVer(r);
+  const ini = sabadoDe(hoje()), idx = Math.round((deIso(hoje()) - deIso(ini)) / 86400000), seg = segundaDe(hoje());
+  const nada = () => Promise.resolve(null), vazio = () => Promise.resolve([]);
+  const [foto, docE, hor, testes, anos, compras, tarefas, docT] = await Promise.all([
+    fotoFamilia(), ok("ementas") ? store.getDoc("ementa-" + ini) : nada(), ok("escola") ? store.getDoc("horario-ema") : nada(),
+    ok("escola") ? store.list("escola_testes") : vazio(), ok("ferias") ? store.list("aniversarios") : vazio(),
+    ok("compras") ? store.list("compras") : vazio(), ok("tarefas") ? store.list("tarefas_familia") : vazio(), ok("tarefas") ? store.getDoc("tarefas-" + seg) : nada()]);
+  const sel = (docE && docE.sel) || {}, v = (k) => sel[idx + k];
+  const dataLonga = new Date().toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" });
+  const linha = (lbl, t) => `<div class="ref-linha"><span class="ref-l">${lbl}</span><span class="ref-t">${t ? esc(t) : `<span class="vazio">—</span>`}</span></div>`;
+  // aulas de hoje (ou do próximo dia de escola)
+  let aulas = "";
+  if (hor && hor.tempos) {
+    const dw = new Date().getDay(), d = dw >= 1 && dw <= 5 ? dw - 1 : 0, quando = dw >= 1 && dw <= 5 ? "Hoje" : "Segunda-feira";
+    const l = hor.tempos.map((t, r) => { const c = (hor.grelha[d] || [])[r]; const xs = Array.isArray(c) ? c : c ? [c] : [];
+      return xs.length ? `<div class="ref-linha"><span class="ref-l">${esc(t[0])}</span><span class="ref-t">${celulaHor(xs)}</span></div>` : ""; }).join("");
+    aulas = `<a class="hoje" href="#escola"><div class="hoje-cab"><span class="bolha">${svg("escola")}</span><h2>${quando} na escola</h2><span class="seta">›</span></div>${l || `<p class="vazio">Sem aulas.</p>`}</a>`;
+  }
+  const prox = testes.filter((t) => t.data && diasAte(t.data) >= 0 && !t.nota).sort((a, b) => String(a.data).localeCompare(String(b.data))).slice(0, 4);
+  const niver = anos.filter((a) => a.nascimento && diasAte(proximaAnual(a.nascimento)) <= 30).sort(COLS.aniversarios.ordem).slice(0, 4);
+  const feitas = (docT && docT.feitas) || {}, hojeT = Math.round((deIso(hoje()) - deIso(seg)) / 86400000);
+  const minhas = tarefas.filter((t) => t.quem === EU || t.quem === "Todos").filter((t) => diasDaTarefa(t).some((d) => d === hojeT || d === "s"));
+  const porFazer = minhas.filter((t) => !diasDaTarefa(t).filter((d) => d === hojeT || d === "s").every((d) => feitas[t.id + "|" + d + (t.quem === "Todos" ? "|" + EU : "")]));
+  const falta = compras.filter((c) => !c.comprado);
+  el.innerHTML = `<div class="perfil">
+    ${foto ? `<button type="button" class="av-btn" id="foto-aj" aria-label="Mudar ou ajustar a tua foto de perfil">${avatarHtml(foto, "grande")}<span class="av-edit">${svg("camara")}</span></button>`
+      : `<label class="av-btn vazio-av" aria-label="Pôr a tua foto de perfil"><span class="avatar grande">${svg("camara")}</span><input type="file" accept="image/*" id="foto-inp" hidden></label>`}
+    <div><h1>Olá, ${esc(EU)}! 👋</h1><div class="sub2">${esc(cap(dataLonga))}</div></div></div>
+  ${aulas}
+  ${ok("ementas") ? `<a class="hoje" href="#ementas"><div class="hoje-cab"><span class="bolha">${svg("ementas")}</span><h2>Hoje para comer</h2><span class="seta">›</span></div>
+    ${linha("Pequeno-almoço", v("P"))}${linha("Meio da manhã", v("E"))}${linha("Almoço", v("A"))}${linha("Lanche", v("TE"))}${linha("Jantar", v("J"))}</a>` : ""}
+  ${ok("tarefas") ? `<section class="seccao"><div class="sec-cab"><h2>As minhas tarefas de hoje</h2><a class="ver" href="#tarefas">Abrir</a></div>
+    ${minhas.length ? (porFazer.length ? `<p class="chips">${porFazer.map((t) => `<span class="chip">${esc(t.tarefa)}</span>`).join("")}</p>` : `<p class="vazio">Já fizeste tudo hoje! 🌟</p>`) : `<p class="vazio">Não tens tarefas para hoje.</p>`}</section>` : ""}
+  ${ok("escola") ? `<section class="seccao"><div class="sec-cab"><h2>Próximos testes e trabalhos</h2><a class="ver" href="#escola">Ver todos</a></div>
+    ${prox.length ? prox.map((t) => { const n = diasAte(t.data); return `<a class="linha-l" href="#escola"><span class="bolha ${n <= 2 ? "laranja" : "azul"}">${svg(t.tipo === "Teste" ? "doc" : "escola")}</span><span class="ct"><b>${esc(COLS.escola_testes.titulo(t))}</b><span class="det">${junta(fmtData(t.data), t.materia)}</span></span><span class="tag ${n <= 2 ? "laranja" : ""}">${esc(rel(n))}</span></a>`; }).join("") : `<p class="vazio">Nada marcado. 👍</p>`}</section>` : ""}
+  ${ok("ferias") && niver.length ? `<section class="seccao"><div class="sec-cab"><h2>Aniversários a chegar</h2><a class="ver" href="#ferias">Ver</a></div>
+    ${niver.map((a) => { const n = diasAte(proximaAnual(a.nascimento)); return `<a class="linha-l" href="#ferias"><span class="bolha ${n <= 3 ? "laranja" : "azul"}">${svg("bolo")}</span><span class="ct"><b>${esc(a.nome)}</b><span class="det">${COLS.aniversarios.detalhe(a)}</span></span><span class="tag">${esc(n === 0 ? "hoje 🎉" : rel(n))}</span></a>`; }).join("")}</section>` : ""}
+  ${ok("compras") ? `<section class="seccao"><div class="sec-cab"><h2>Lista de compras</h2><a class="ver" href="#compras">Abrir</a></div>
+    <p class="det" style="margin:0">Falta alguma coisa em casa? Acrescenta à lista.</p>
+    <form class="rapido" id="rapido-c"><input name="nome" placeholder="Ex: iogurtes" aria-label="Artigo" autocomplete="off"><button class="pri">Adicionar</button></form>
+    ${falta.length ? `<p class="chips">${falta.slice(0, 12).map((c) => `<span class="chip">${esc(c.nome)}</span>`).join("")}${falta.length > 12 ? `<span class="chip">+${falta.length - 12}</span>` : ""}</p>` : ""}</section>` : ""}`;
+  const inp = $("#foto-inp", el);
+  if (inp) inp.onchange = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; try { await novaFoto(f); await render(); ajustarFoto(); } catch (err) { erro(err); } };
+  const aj = $("#foto-aj", el); if (aj) aj.onclick = ajustarFoto;
+  const fc = $("#rapido-c", el);
+  if (fc) fc.onsubmit = async (e) => {
+    e.preventDefault(); const nome = fc.nome.value.trim(); if (!nome) return fc.nome.focus();
+    try { await store.add("compras", { nome, qtd: "", cat: "", comprado: false, pedido_por: EU }); aviso(`«${nome}» está na lista 🛒`); render(); } catch (err) { erro(err); }
+  };
+  const stp = await estadoPush().catch(() => "nao");
+  if (stp !== "ativo" && stp !== "nao") await cartaoPush(el);
+}
+
 async function vInicio(el) {
+  if (CRIANCA()) return vInicioCrianca(el);
   const ini = sabadoDe(hoje()), idx = Math.round((deIso(hoje()) - deIso(ini)) / 86400000);
   const ids = Object.keys(ROTA_DE);
   const [docOrc, foto, docE, compras, despesas, ...listas] = await Promise.all([store.getDoc("orcamento"), fotoFamilia(), store.getDoc("ementa-" + ini), store.list("compras"), store.list("despesas"), ...ids.map((i) => store.list(i))]);
@@ -983,7 +1043,28 @@ function slotHtml(k, label, pessoa) {
     ${k === "A" || k === "J" ? `<label class="chk"><input type="checkbox" data-sal="${k}" ${E.sel[E.dia + k + "S"] ? "checked" : ""}> Fazer salada</label>` : ""}</div>`;
 }
 
+function ementaLeitura(el) {
+  const v = (k) => E.sel[E.dia + k];
+  const pv = (t) => (t ? esc(t) : `<span class="vazio">—</span>`);
+  const linha = (lbl, html) => `<div class="ref-linha"><span class="ref-l">${lbl}</span><span class="ref-t">${html}</span></div>`;
+  const lanche = (ix) => { const l = WHO.filter((w) => v(w[ix])); return l.length ? l.map((w) => `<span class="quem">${w[0]}</span> ${esc(v(w[ix]))}`).join("<br>") : `<span class="vazio">—</span>`; };
+  el.innerHTML = `<div class="cab"><div><h1>Ementa semanal</h1><div class="sub2">${dm(E.ini)} a ${dm(somaDias(E.ini, 6))}</div></div>
+    <div class="semana"><button class="sec peq" data-sem="-7" aria-label="Semana anterior">◀</button><button class="sec peq" data-sem="7" aria-label="Semana seguinte">▶</button>
+    <button class="sec" id="imprimir">Imprimir semana</button></div></div>
+  <div class="dias" role="tablist">${DIAS.map((d, i) => `<button role="tab" aria-selected="${i === E.dia}" data-dia="${i}">${cap(d).slice(0, 3)} ${deIso(somaDias(E.ini, i)).getDate()}</button>`).join("")}</div>
+  <section class="hoje"><h2 class="dia-tit">${DIAS[E.dia]} · ${dm(somaDias(E.ini, E.dia))}</h2>
+    ${linha("Pequeno-almoço", pv(v("P")))}${linha("Meio da manhã", lanche(1))}${linha("Almoço", pv(v("A")) + (v("AS") ? ` <span class="tag">+ salada</span>` : ""))}${linha("Meio da tarde", lanche(2))}${linha("Jantar", pv(v("J")) + (v("JS") ? ` <span class="tag">+ salada</span>` : ""))}
+  </section>`;
+  el.onclick = (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.dia != null) { E.dia = +b.dataset.dia; return ementaLeitura(el); }
+    if (b.dataset.sem != null) { E.ini = somaDias(E.ini, +b.dataset.sem); E.dia = 0; return render(); }
+    if (b.id === "imprimir") imprimirEmenta();
+  };
+}
+
 function desenharEmenta(el) {
+  if (CRIANCA()) return ementaLeitura(el);
   const feitas = Object.entries(E.sel).filter(([k, v]) => v && !/S$/.test(k)).length;
   el.innerHTML = `<div class="cab"><div><h1>Ementa semanal</h1><div class="sub2">${dm(E.ini)} a ${dm(somaDias(E.ini, 6))} · ${feitas} de 63 escolhas feitas</div></div>
     <div class="semana">
@@ -1207,7 +1288,9 @@ async function vCompras(el) {
   const col = COLS.compras;
   const itens = (await store.list("compras")).sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
   const falta = itens.filter((i) => !i.comprado), feitos = itens.filter((i) => i.comprado);
-  const linha = (i) => `<div class="artigo ${i.comprado ? "feito" : ""}"><label><input type="checkbox" data-t="${esc(i.id)}" ${i.comprado ? "checked" : ""}><span>${esc(i.nome)}</span>${i.qtd ? `<span class="q">${esc(i.qtd)}</span>` : ""}</label><button class="sec peq" data-e="${esc(i.id)}" aria-label="Editar ${esc(i.nome)}">Editar</button></div>`;
+  const so = CRIANCA();
+  const linha = (i) => so ? `<div class="artigo ${i.comprado ? "feito" : ""}"><label><span>${i.comprado ? "✓ " : "• "}${esc(i.nome)}</span>${i.qtd ? `<span class="q">${esc(i.qtd)}</span>` : ""}</label></div>`
+    : `<div class="artigo ${i.comprado ? "feito" : ""}"><label><input type="checkbox" data-t="${esc(i.id)}" ${i.comprado ? "checked" : ""}><span>${esc(i.nome)}</span>${i.qtd ? `<span class="q">${esc(i.qtd)}</span>` : ""}</label><button class="sec peq" data-e="${esc(i.id)}" aria-label="Editar ${esc(i.nome)}">Editar</button></div>`;
   const grupos = [...CAT_COMP, ""].map((c) => { const g = falta.filter((i) => (i.cat || "") === c || (c === "Outros" && i.cat && !CAT_COMP.includes(i.cat))); return g.length ? `<div class="grupo"><h3>${esc(c || "Sem secção")}</h3>${g.map(linha).join("")}</div>` : ""; }).join("");
   el.innerHTML = `${cab("Lista de compras", `${falta.length} por comprar`)}
     <form class="rapido" id="rapido"><input name="nome" placeholder="Adicionar artigo (ex: leite)" aria-label="Artigo" autocomplete="off">
@@ -1215,7 +1298,7 @@ async function vCompras(el) {
       <select name="cat" aria-label="Secção"><option value="">Secção…</option>${CAT_COMP.map((c) => `<option ${c === ultimaCat ? "selected" : ""}>${c}</option>`).join("")}</select>
       <button class="pri">Adicionar</button></form>
     <section class="seccao">${grupos || `<p class="vazio">A lista está vazia.</p>`}
-      ${feitos.length ? `<div class="grupo"><h3>Já no carrinho</h3>${feitos.map(linha).join("")}</div><div><button class="sec" id="limpar">Limpar comprados (${feitos.length})</button></div>` : ""}
+      ${feitos.length && !so ? `<div class="grupo"><h3>Já no carrinho</h3>${feitos.map(linha).join("")}</div><div><button class="sec" id="limpar">Limpar comprados (${feitos.length})</button></div>` : ""}
     </section>`;
   const f = $("#rapido", el);
   f.onsubmit = async (e) => {
@@ -1224,6 +1307,7 @@ async function vCompras(el) {
     ultimaCat = f.cat.value;
     try { await store.add("compras", { nome, qtd: f.qtd.value.trim(), cat: f.cat.value, comprado: false }); await render(); $("#rapido input[name=nome]")?.focus(); } catch (err) { erro(err); }
   };
+  if (so) return;
   el.onchange = async (e) => {
     const id = e.target.dataset.t; if (!id) return;
     const it = itens.find((x) => x.id === id);
@@ -1724,10 +1808,15 @@ const ICO = {
 };
 const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["escola", "Escola Ema"], ["estudo", "Estudo"], ["viagens", "Viagens"], ["ferias", "Férias e aniversários"], ["medicos", "Médicos"], ["tarefas", "Tarefas e mesada"], ["despensa", "Despensa"], ["contactos", "Contactos úteis"], ["contadores", "Contadores"], ["dados", "Gerir dados"]];
 const svg = (k) => `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]}</svg>`;
-const NA_BARRA = ["inicio", "ementas", "compras", "despesas"];
+let NA_BARRA = ["inicio", "ementas", "compras", "despesas"];
+// secções que quem entrou pode ver (as crianças só veem as escolhidas pelos pais)
+const podeVer = (r) => !CRIANCA() || r === "inicio" || (SECOES_OK.includes(r) && r !== "dados");
+const secoesVisiveis = () => SECOES.filter(([r]) => podeVer(r));
 function montarMenus() {
-  $("#nav").innerHTML = SECOES.map(([r, l]) => `<a href="#${r}" data-r="${r}">${svg(r)}<span>${l}</span></a>`).join("");
-  $("#tabbar").innerHTML = SECOES.filter(([r]) => NA_BARRA.includes(r)).map(([r, l]) => `<a href="#${r}" data-r="${r}">${svg(r)}<span>${l}</span></a>`).join("")
+  NA_BARRA = CRIANCA() ? secoesVisiveis().slice(0, 4).map(([r]) => r) : ["inicio", "ementas", "compras", "despesas"];
+  document.body.classList.toggle("crianca", CRIANCA());
+  $("#nav").innerHTML = secoesVisiveis().map(([r, l]) => `<a href="#${r}" data-r="${r}">${svg(r)}<span>${l}</span></a>`).join("");
+  $("#tabbar").innerHTML = secoesVisiveis().filter(([r]) => NA_BARRA.includes(r)).map(([r, l]) => `<a href="#${r}" data-r="${r}">${svg(r)}<span>${l}</span></a>`).join("")
     + `<button type="button" id="btn-mais" data-r="mais">${svg("mais")}<span>Mais</span></button>`;
   $("#btn-mais").onclick = abrirMais;
 }
@@ -1735,8 +1824,8 @@ function abrirMais() {
   const dlg = $("#dlg"); dlg.oncancel = null;
   const online = store && store.modo === "online";
   dlg.innerHTML = `<div class="form folha-mais"><div class="pega" aria-hidden="true"></div><h2>Mais</h2>
-    <div class="mosaico">${SECOES.filter(([r]) => !NA_BARRA.includes(r)).map(([r, l]) => `<a href="#${r}" class="tile">${svg(r)}<span>${l}</span></a>`).join("")}</div>
-    <button type="button" class="sec grande" data-a="copia">💾 Cópia de segurança (Excel)</button>
+    <div class="mosaico">${secoesVisiveis().filter(([r]) => !NA_BARRA.includes(r)).map(([r, l]) => `<a href="#${r}" class="tile">${svg(r)}<span>${l}</span></a>`).join("")}</div>
+    ${CRIANCA() ? "" : `<button type="button" class="sec grande" data-a="copia">💾 Cópia de segurança (Excel)</button>`}
     ${online ? `<div class="acoes"><button type="button" class="sec" data-a="senha">Mudar senha</button><button type="button" class="sec" data-a="sair">Sair</button></div>` : ""}
     <button type="button" class="sec grande" data-a="fechar">Fechar</button></div>`;
   dlg.onclick = (e) => {
@@ -1786,9 +1875,9 @@ async function vTarefas(el) {
     <div class="grelha">${PESSOAS.map((q) => `<div class="mini"><span class="rot">${esc(q)}</span><span class="num">${pontos[q] || 0}<small style="font-size:16px;color:var(--suave)"> / ${possiveis[q] || 0} pt</small></span>
       <span class="orc-b"><i class="verde" style="width:${possiveis[q] ? Math.min(100, ((pontos[q] || 0) / possiveis[q]) * 100) : 0}%"></i></span></div>`).join("")}</div>
     <section class="seccao"><h2>Tarefas da semana</h2>${grupos || `<p class="vazio">Ainda não há tarefas. Acrescenta-as em baixo, na Lista de tarefas.</p>`}</section>
-    <section class="seccao"><div class="sec-cab"><h2>💰 Mesada da Ema</h2><button type="button" class="sec peq" id="cfg-mesada">Regras</button></div>
+    <section class="seccao"><div class="sec-cab"><h2>💰 Mesada da Ema</h2>${CRIANCA() ? "" : `<button type="button" class="sec peq" id="cfg-mesada">Regras</button>`}</div>
       <div class="orc-tot"><div><span class="total">${euro(mesada)}</span> <span class="det">esta semana · ${emaP} pontos × ${euro(cfg.eurosPonto)}${+cfg.base ? " + " + euro(cfg.base) + " base" : ""}</span></div></div>
-      <div class="acoes"><button type="button" class="pri" id="guardar-mesada" ${jaGuardada || !mesada ? "disabled" : ""}>${jaGuardada ? "✓ Já está no mealheiro" : "Pôr no mealheiro"}</button>
+      <div class="acoes">${CRIANCA() ? "" : `<button type="button" class="pri" id="guardar-mesada" ${jaGuardada || !mesada ? "disabled" : ""}>${jaGuardada ? "✓ Já está no mealheiro" : "Pôr no mealheiro"}</button>`}
       <span class="det">Mealheiro: <b style="color:var(--texto)">${euro(saldo)}</b></span></div></section>`;
   el.onclick = async (e) => {
     const b = e.target.closest("button"); if (!b) return;
@@ -1890,6 +1979,37 @@ function alertasContadores(leituras) {
    GERIR DADOS (apagar anexos e registos)
    ===================================================================== */
 const campoData = (col) => (col.campos.find((c) => c.t === "date") || {}).k;
+/* ---------- acessos das crianças (só os pais veem; regras em acessos.sql) ---------- */
+const SECOES_CRIANCA = ["ementas", "compras", "escola", "estudo", "tarefas", "ferias", "familia", "viagens", "contactos", "despensa", "casa", "medicos", "despesas", "veiculos", "contadores"];
+const NOTA_SEC = { ementas: "só ver", compras: "ver e acrescentar", estudo: "fazer fichas", tarefas: "marcar as tarefas feitas", despesas: "inclui o orçamento", medicos: "inclui saúde de todos" };
+async function cartaoAcessos(el) {
+  if (!sb || CRIANCA()) return;
+  const { data, error } = await sb.from("membros").select("email,nome,papel,secoes").eq("papel", "crianca");
+  const box = document.createElement("section"); box.className = "seccao";
+  if (error) {
+    box.innerHTML = `<h2>👧 Acessos da Ema</h2><p class="det">Para limitar o que a Ema vê, corre uma vez o ficheiro <b>acessos.sql</b> no Supabase (SQL Editor → colar → Run).</p>`;
+    return el.appendChild(box);
+  }
+  if (!data.length) return;
+  const nomeSec = Object.fromEntries(SECOES);
+  box.innerHTML = data.map((m) => `<div class="acesso" data-email="${esc(m.email)}"><div class="sec-cab"><h2>👧 Acessos da ${esc(m.nome)}</h2></div>
+    <p class="det" style="margin:0">Escolhe o que a ${esc(m.nome)} vê na app. Nas secções escolhidas só pode ver (não muda nem apaga nada), exceto o que está entre parênteses.</p>
+    <div class="acessos-l">${SECOES_CRIANCA.map((r) => `<label class="chk"><input type="checkbox" value="${r}" ${(m.secoes || []).includes(r) ? "checked" : ""}> ${esc(nomeSec[r])}${NOTA_SEC[r] ? ` <span class="det">(${NOTA_SEC[r]})</span>` : ""}</label>`).join("")}</div>
+    <div class="acoes"><button type="button" class="pri" data-guardar>Guardar acessos</button></div></div>`).join("");
+  el.appendChild(box);
+  box.onclick = async (e) => {
+    const b = e.target.closest("[data-guardar]"); if (!b) return;
+    const d = b.closest(".acesso"), secoes = [...d.querySelectorAll("input:checked")].map((i) => i.value);
+    b.disabled = true;
+    try {
+      const r = await sb.from("membros").update({ secoes }).eq("email", d.dataset.email).select("email");
+      if (r.error) throw r.error;
+      if (!r.data.length) throw new Error("Sem permissão para mudar os acessos.");
+      aviso("Acessos guardados — a Ema vê as mudanças da próxima vez que abrir a app");
+    } catch (err) { erro(err); } finally { b.disabled = false; }
+  };
+}
+
 async function vDados(el) {
   const listas = {};
   for (const col of Object.values(COLS)) listas[col.id] = await store.list(col.id);
@@ -1957,6 +2077,7 @@ async function vDados(el) {
       }
     } catch (err) { erro(err); }
   };
+  await cartaoAcessos(el);
   await cartaoPush(el, true);
 }
 
@@ -1997,7 +2118,7 @@ const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: 
 let ROTA_ARGS = [];
 async function render() {
   if (!store) return;
-  const partes = decodeURIComponent(location.hash.slice(1)).split("/"), h = partes[0], rota = ROTAS[h] ? h : "inicio";
+  const partes = decodeURIComponent(location.hash.slice(1)).split("/"), h = partes[0], rota = ROTAS[h] && podeVer(h) ? h : "inicio";
   ROTA_ARGS = partes.slice(1);
   const naBarra = NA_BARRA.includes(rota);
   $$("#tabbar [data-r]").forEach((a) => a.classList.toggle("ativo", a.dataset.r === rota || (a.dataset.r === "mais" && !naBarra)));
@@ -2041,11 +2162,12 @@ function mostrarApp(estado) {
   render();
   fotoFamilia().then(atualizarLogo).catch(() => {});
   ligarTempoReal();
-  lancarContas().catch((e) => console.error(e));
+  if (!CRIANCA()) lancarContas().catch((e) => console.error(e));
 }
 function mostrarLogin(msg, ok) {
   if (canal && sb) { sb.removeChannel(canal); canal = null; }
   store = null; FOTO = undefined; atualizarLogo();
+  if (CRIANCA()) { PAPEL = "adulto"; SECOES_OK = []; montarMenus(); }
   $("#app").hidden = true; $("#login").hidden = false;
   const m = $("#login-msg"); m.textContent = msg || ""; m.classList.toggle("ok", !!ok);
 }
@@ -2057,13 +2179,17 @@ const MSG_ERRO = { "Invalid login credentials": "Email ou senha errados.", "Emai
 
 async function entrar(session) {
   const email = (session.user.email || "").toLowerCase();
-  const { data, error } = await sb.from("membros").select("nome").eq("email", email).maybeSingle();
+  let { data, error } = await sb.from("membros").select("nome,papel,secoes").eq("email", email).maybeSingle();
+  if (error && /papel|secoes|column/i.test(error.message)) ({ data, error } = await sb.from("membros").select("nome").eq("email", email).maybeSingle()); // acessos.sql ainda não corrido
   if (error || !data) {
     msgSaida = error ? "Erro a verificar acesso: " + error.message : "Esta conta ainda não tem acesso à casa.";
     await sb.auth.signOut();
     return mostrarLogin(msgSaida);
   }
   EU = data.nome;
+  PAPEL = data.papel === "crianca" ? "crianca" : "adulto";
+  SECOES_OK = data.secoes || [];
+  montarMenus();
   store = storeSupabase();
   $("#btn-sair").hidden = false; $("#btn-senha").hidden = false;
   mostrarApp("Online · " + EU);
