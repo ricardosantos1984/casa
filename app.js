@@ -456,7 +456,7 @@ const COLS = {
     alertas: (d) => { if (!d.inicio) return []; const a = diasAte(d.inicio), b = diasAte(d.fim || d.inicio);
       if (b < 0) return []; if (a <= 0) return [{ nivel: "azul", dias: 0, texto: "A decorrer, até " + dm(d.fim || d.inicio) + " 🌴" }];
       return a <= 14 ? [{ nivel: a <= 3 ? "laranja" : "azul", dias: a, texto: "Começam " + rel(a) }] : []; },
-    ordem: (a, b) => { const fa = diasAte(a.fim || a.inicio) >= 0, fb = diasAte(b.fim || b.inicio) >= 0; if (fa !== fb) return fa ? -1 : 1; return fa ? String(a.inicio).localeCompare(String(b.inicio)) : String(b.inicio).localeCompare(String(a.inicio)); },
+    ordem: (a, b) => String(a.inicio || "").localeCompare(String(b.inicio || "")), // por data, da mais antiga para a mais recente
     vazio: "Sem férias marcadas.",
   },
   fichas_carregadas: {
