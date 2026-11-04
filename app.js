@@ -444,7 +444,7 @@ const COLS = {
     id: "ferias", nome: "Férias e folgas", item: "período de férias",
     campos: [
       { k: "quem", l: "Quem", t: "select", o: () => [...PESSOAS, "Família"], req: 1, def: () => EU },
-      { k: "tipo", l: "Tipo", t: "select", o: ["Férias", "Folga / ponte", "Férias escolares", "Outro"], def: "Férias" },
+      { k: "tipo", l: "Tipo", t: "select", o: ["Férias", "Folga / ponte", "Férias do ano anterior", "Bónus (½ dia)", "Férias escolares", "Outro"], def: "Férias" },
       { k: "inicio", l: "Primeiro dia", t: "date", req: 1 },
       { k: "fim", l: "Último dia", t: "date", req: 1 },
       { k: "destino", l: "Onde / planos", t: "text" },
@@ -452,7 +452,7 @@ const COLS = {
       { k: "notas", l: "Notas", t: "textarea" },
     ],
     titulo: (d) => `${d.quem} — ${d.tipo || "Férias"}${d.destino ? " · " + d.destino : ""}`,
-    detalhe: (d) => junta(d.inicio ? fmtData(d.inicio) + (d.fim && d.fim !== d.inicio ? " a " + fmtData(d.fim) : "") : "", d.inicio && d.fim ? diasUteis(d.inicio, d.fim) + " dias úteis" : "", d.tipo === "Férias" || d.tipo === "Folga / ponte" ? (d.aprovado ? "aprovado ✓" : "por aprovar") : ""),
+    detalhe: (d) => junta(d.inicio ? fmtData(d.inicio) + (d.fim && d.fim !== d.inicio ? " a " + fmtData(d.fim) : "") : "", d.tipo === "Bónus (½ dia)" ? "½ dia de bónus · não conta como férias" : d.inicio && d.fim ? (() => { const n = diasUteis(d.inicio, d.fim); return n + (n === 1 ? " dia útil" : " dias úteis"); })() : "", d.tipo === "Férias do ano anterior" ? "dias que sobraram do ano anterior" : "", ["Férias", "Folga / ponte", "Férias do ano anterior"].includes(d.tipo) ? (d.aprovado ? "aprovado ✓" : "por aprovar") : ""),
     alertas: (d) => { if (!d.inicio) return []; const a = diasAte(d.inicio), b = diasAte(d.fim || d.inicio);
       if (b < 0) return []; if (a <= 0) return [{ nivel: "azul", dias: 0, texto: "A decorrer, até " + dm(d.fim || d.inicio) + " 🌴" }];
       return a <= 14 ? [{ nivel: a <= 3 ? "laranja" : "azul", dias: a, texto: "Começam " + rel(a) }] : []; },
@@ -1720,8 +1720,11 @@ async function vFerias(el) {
   const ano = hoje().slice(0, 4);
   const ferias = await store.list("ferias");
   const resumo = PESSOAS.filter((p) => p !== "Ema").map((p) => {
-    const usados = ferias.filter((f) => f.quem === p && (f.tipo === "Férias" || f.tipo === "Folga / ponte") && String(f.inicio || "").startsWith(ano)).reduce((s, f) => s + diasUteis(f.inicio, f.fim), 0);
-    return `<div class="orc-l"><div class="orc-t"><span>${esc(p)}</span><span class="det"><b>${usados}</b> de ${DIAS_FERIAS} dias úteis marcados em ${ano}${usados <= DIAS_FERIAS ? ` · faltam ${DIAS_FERIAS - usados}` : ""}</span></div>
+    const doAno = ferias.filter((f) => f.quem === p && String(f.inicio || "").startsWith(ano));
+    const dias = (tipo) => doAno.filter((f) => f.tipo === tipo).reduce((s, f) => s + diasUteis(f.inicio, f.fim), 0);
+    const usados = dias("Férias"), pontes = dias("Folga / ponte"), anterior = dias("Férias do ano anterior"), bonus = doAno.filter((f) => f.tipo === "Bónus (½ dia)").length;
+    const extra = [pontes ? `${pontes} ${pontes === 1 ? "dia" : "dias"} de ponte` : "", anterior ? `${anterior} ${anterior === 1 ? "dia" : "dias"} do ano anterior` : "", bonus ? `${bonus} ${bonus === 1 ? "bónus" : "bónus"} de ½ dia` : ""].filter(Boolean).join(" · ");
+    return `<div class="orc-l"><div class="orc-t"><span>${esc(p)}</span><span class="det"><b>${usados}</b> de ${DIAS_FERIAS} dias de férias de ${ano}${usados <= DIAS_FERIAS ? ` · faltam ${DIAS_FERIAS - usados}` : ` · passou ${usados - DIAS_FERIAS}`}${extra ? `<br>Além disso: ${extra}` : ""}</span></div>
       <div class="orc-b"><i class="${usados > DIAS_FERIAS ? "vermelho" : "verde"}" style="width:${Math.min(100, (usados / DIAS_FERIAS) * 100)}%"></i></div></div>`;
   }).join("");
   const prox = Object.entries(FERIADOS).filter(([d]) => diasAte(d) >= 0).slice(0, 8);
