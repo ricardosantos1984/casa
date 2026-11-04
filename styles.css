@@ -459,3 +459,13 @@ body.crianca [data-ocultar], body.crianca [data-repor] { display: none !importan
 .luz-barra i { display: block; height: 100%; }
 .luz-leg { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }
 .luz-leg i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: middle; }
+.tarifas .tar-of { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--linha, rgba(255,255,255,.08)); }
+.tarifas .tar-of.melhor b { color: var(--verde, #2FB673); }
+.tarifas .tar-of .det { display: block; font-size: 12.5px; }
+.tarifas .tar-v { font-weight: 700; white-space: nowrap; }
+.tarifas .tar-v small { font-weight: 400; color: var(--suave); }
+.tarifas .veredito { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; margin-top: 10px; background: rgba(242,201,76,.12); border: 1px solid rgba(242,201,76,.45); }
+.tarifas .veredito.neutro { background: rgba(47,182,115,.12); border-color: rgba(47,182,115,.45); }
+.tarifas .veredito .trofeu { font-size: 26px; line-height: 1; }
+.tarifas .veredito .det { display: block; margin-top: 3px; }
+.tarifas .tar-cfg { padding: 8px 0 0; }

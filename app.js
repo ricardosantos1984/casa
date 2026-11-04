@@ -2028,6 +2028,7 @@ async function vContadores(el) {
     </section>`;
   }).join("");
   el.innerHTML = `${cab("Contadores", "Leituras da luz, água e gás. Uma leitura por mês chega para veres os consumos e apanhares faturas estranhas.")}${blocos || ""}`;
+  if (!CRIANCA()) await blocoTarifasLuz(el);
   await seccao(el, COLS.leituras);
 }
 /* ---------- luz: consumo por horário (vazio, ponta, cheias) ---------- */
@@ -2051,6 +2052,46 @@ function blocoHorariosLuz(l, f) {
   return `<div class="luz-hor"><div class="det">Em que horário gastas (último período, ${p.dias} dias)</div>${barra}
     <div class="luz-leg">${HOR_LUZ.map(([k, n, cor]) => `<span><i style="background:${cor}"></i>${n}: <b>${f(p[k], 1)} kWh</b> (${f((p[k] / tot) * 100, 0)}%)</span>`).join("")}</div>
     <p class="det">Gastas mais em <b>${maior[1].toLowerCase()}</b>.${p.vazio / tot >= 0.4 ? " Com tanto consumo em vazio, uma tarifa bi-horária pode compensar." : ""}</p></div>`;
+}
+
+/* ---------- luz: que operadora fica mais barata (documento "tarifas-luz", calculado pelo n8n com os dados da ERSE) ---------- */
+const POTENCIAS = ["1,15", "2,3", "3,45", "4,6", "5,75", "6,9", "10,35", "13,8", "17,25", "20,7"];
+async function blocoTarifasLuz(el) {
+  const [t, cfg] = await Promise.all([store.getDoc("tarifas-luz"), store.getDoc("luz-config")]);
+  const c = cfg || {};
+  const box = document.createElement("section"); box.className = "seccao tarifas";
+  const linhaOf = (o, destaque) => o ? `<div class="tar-of ${destaque ? "melhor" : ""}"><div><b>${esc(o.comNome)}</b> — ${esc(o.nome)}<span class="det">${esc(o.cicloNome)}${o.fidelizacao ? " · com fidelização" : ""}${o.novos ? " · só novos clientes" : ""}${o.link ? ` · <a href="${esc(/^https?:/.test(o.link) ? o.link : "https://" + o.link)}" target="_blank" rel="noopener">ver oferta</a>` : ""}</span></div><span class="tar-v">${euro(o.ano)}<small>/ano</small></span></div>` : "";
+  let corpo = "";
+  if (!t) corpo = `<p class="vazio">A lista de tarifários aparece aqui depois da próxima atualização (todos os dias às 9h10, com o PC ligado).</p>`;
+  else {
+    const poupa = t.atual && t.melhor ? t.atual.ano - t.melhor.ano : null;
+    corpo = `${!c.proposta ? `<p class="al amarelo">Escolhe em baixo o vosso tarifário atual para eu calcular quanto poupavam.</p>` : ""}
+      ${t.atual ? `<div class="det" style="margin-top:6px">O vosso tarifário agora</div>${linhaOf(t.atual)}` : c.proposta ? `<p class="det">Não encontrei o vosso tarifário para ${esc(t.potencia)} kVA na lista da ERSE. Confirma a potência e o ciclo.</p>` : ""}
+      ${poupa != null ? `<div class="veredito ${poupa > 30 ? "" : "neutro"}"><span class="trofeu">${poupa > 30 ? "💡" : "👍"}</span><div><b>${poupa > 30 ? `Podiam poupar cerca de ${euro(poupa)} por ano` : "O vosso tarifário já está entre os mais baratos"}</b><span class="det">${poupa > 30 ? `mudando para ${esc(t.melhor.comNome)} — ${esc(t.melhor.nome)} (${esc(t.melhor.cicloNome)}).` : poupa > 0 ? `A melhor alternativa só poupa ${euro(poupa)} por ano.` : ""}</span></div></div>` : ""}
+      <div class="det" style="margin-top:10px">As mais baratas para o vosso consumo</div>
+      ${(t.top || []).slice(0, 5).map((o, i) => linhaOf(o, i === 0)).join("")}
+      <details><summary>Melhor de cada ciclo (simples, bi e tri-horário)</summary>${["1", "2", "3"].map((k) => linhaOf((t.porCiclo || {})[k])).join("")}
+        <p class="det">O bi-horário e o tri-horário compensam quando gastam muito em vazio (noite e fim de semana). O vosso contador já regista os 3 horários.</p></details>
+      <p class="det">Contas com ${Number(t.kwhAno).toLocaleString("pt-PT")} kWh/ano (${esc(t.fonte)}), ${esc(t.potencia)} kVA, horários: vazio ${Math.round(t.rep.vazio * 100)}% · cheias ${Math.round(t.rep.cheias * 100)}% · ponta ${Math.round(t.rep.ponta * 100)}% (${esc(t.repFonte)}). Valores sem IVA nem taxas, a partir das ${t.totalOfertas} ofertas da ERSE; deixei de fora as indexadas ao mercado e as que obrigam a outros serviços. Atualizado ${fmtData(String(t.atualizado).slice(0, 10))}.</p>`;
+  }
+  const lista = (t && t.lista) || [];
+  const coms = [...new Map(lista.map((o) => [o.com, o.comNome])).entries()];
+  box.innerHTML = `<div class="sec-cab"><h2>⚡ Que operadora de luz fica mais barata</h2></div>${corpo}
+    <details ${c.proposta ? "" : "open"}><summary>O nosso contrato de luz</summary><form class="form tar-cfg">
+      <label class="campo"><span>Operadora</span><select name="com"><option value="">—</option>${coms.map(([k, n]) => `<option value="${esc(k)}" ${k === c.com ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>
+      <label class="campo"><span>Tarifário</span><select name="proposta"></select></label>
+      <label class="campo"><span>Ciclo</span><select name="ciclo">${[["1", "Simples"], ["2", "Bi-horário"], ["3", "Tri-horário"]].map(([v, n]) => `<option value="${v}" ${String(c.ciclo || "1") === v ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+      <label class="campo"><span>Potência contratada (vem na fatura)</span><select name="potencia">${POTENCIAS.map((v) => `<option ${v === (c.potencia || (t && t.potencia) || "6,9") ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+      <p class="det">Não encontras o vosso? Na fatura vem o nome do comercializador e do tarifário. As contas são refeitas na próxima atualização diária (9h10).</p>
+      <div class="acoes"><span class="esp"></span><button class="pri">Guardar</button></div></form></details>`;
+  el.appendChild(box);
+  const f = $(".tar-cfg", box);
+  const encherPropostas = () => { const ps = lista.filter((o) => o.com === f.com.value); f.proposta.innerHTML = `<option value="">—</option>` + ps.map((o) => `<option value="${esc(o.cod)}" ${o.cod === c.proposta ? "selected" : ""}>${esc(o.nome)}</option>`).join(""); };
+  encherPropostas(); f.com.onchange = encherPropostas;
+  f.onsubmit = async (e) => {
+    e.preventDefault();
+    try { await store.setDoc("luz-config", { com: f.com.value, proposta: f.proposta.value, ciclo: f.ciclo.value, potencia: f.potencia.value }); aviso("Guardado — as contas ficam prontas na próxima atualização"); render(); } catch (err) { erro(err); }
+  };
 }
 
 function alertasContadores(leituras) {
