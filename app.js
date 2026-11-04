@@ -1315,10 +1315,10 @@ function blocoPrecos(doc, falta) {
     ${melhor ? `<div class="veredito"><span class="trofeu">🏆</span><div><b>O ${NOME_LOJA[melhor]} é o mais barato.</b>
       <span class="det">Comparando os mesmos ${comuns.length} ${comuns.length === 1 ? "artigo" : "artigos"} que há nas 3 lojas: ${ordem.map((l, k) => `${NOME_LOJA[l]} <b>${euro(tc[l])}</b>${k ? ` (+${euro(tc[l] - tc[melhor])})` : ""}`).join(" · ")}.</span></div></div>`
       : `<p class="det">Ainda não há artigos que existam nas 3 lojas para dizer qual é a mais barata.</p>`}
-    <h3 class="plano-t">🔀 Se quiseres poupar ao máximo, compra assim</h3>
+    <details class="plano-d"><summary><span>🔀 Para poupar ao máximo: <b>${euro(totPlano)}</b> em ${lojas.filter((l) => plano[l].length).length} ${lojas.filter((l) => plano[l].length).length === 1 ? "loja" : "lojas"}</span><span class="det">ver o que comprar em cada loja</span></summary>
     <div class="plano">${lojas.filter((l) => plano[l].length).map((l) => `<div class="plano-l"><div class="plano-cab"><b>${NOME_LOJA[l]}</b><span>${plano[l].length} ${plano[l].length === 1 ? "artigo" : "artigos"} · <b>${euro(soma(l, plano[l]))}</b></span></div><p class="chips">${plano[l].map((n) => chip(n, l)).join("")}</p></div>`).join("")}
       <div class="plano-tot">Total: <b>${euro(totPlano)}</b> por ${nomes.length - semPreco.length} artigos</div>
-      ${semPreco.length ? `<p class="det">Sem preço em nenhuma loja (${semPreco.length}): ${semPreco.map(esc).join(", ")}.</p>` : ""}</div>
+      ${semPreco.length ? `<p class="det">Sem preço em nenhuma loja (${semPreco.length}): ${semPreco.map(esc).join(", ")}.</p>` : ""}</div></details>
     <details><summary>Ver todos os preços, artigo a artigo</summary><div class="tab-precos"><table><thead><tr><th>Artigo</th>${lojas.map((l) => `<th>${NOME_LOJA[l]}</th>`).join("")}</tr></thead>
       <tbody>${nomes.map((n) => `<tr><th>${esc(n)}${doc.artigos[n].nota ? `<span class="det">${esc(doc.artigos[n].nota)}</span>` : ""}</th>${lojas.map((l) => cel(n, l)).join("")}</tr>`).join("")}</tbody></table></div>
       <p class="det">✓ verde = mais barato. Toca num preço para ver o produto no site da loja. * preço com Lidl Plus. Preços das lojas online (no Lidl, os da loja desta semana); em Tomar podem variar. ${(doc.fora || []).map(esc).join(" · ")}.</p></details>

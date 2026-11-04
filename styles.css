@@ -446,3 +446,6 @@ body.crianca [data-ocultar], body.crianca [data-repor] { display: none !importan
 .precos .plano-cab span { color: var(--suave); }
 .precos .plano .chip b { font-weight: 600; color: var(--verde, #2FB673); margin-left: 4px; }
 .precos .plano-tot { text-align: right; padding: 8px 0; font-size: 16px; }
+.precos .plano-d { margin-top: 10px; }
+.precos .plano-d > summary { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; cursor: pointer; font-size: 15px; }
+.precos .plano-d > summary .det { font-size: 13px; }
