@@ -1293,27 +1293,35 @@ function blocoPrecos(doc, falta) {
   const nomes = falta.map((i) => String(i.nome).trim()).filter((n) => doc.artigos[n]);
   const faltam = falta.length - nomes.length;
   if (!nomes.length) return `<section class="seccao precos">${cabec}<p class="vazio">A calcular os preços da lista… volta daqui a uns minutos.</p></section>`;
-  const comuns = nomes.filter((n) => lojas.every((l) => doc.artigos[n].lojas[l]));
-  const tot = (l, lista) => lista.reduce((s, n) => s + (doc.artigos[n].lojas[l] ? doc.artigos[n].lojas[l].preco : 0), 0);
-  const tc = Object.fromEntries(lojas.map((l) => [l, tot(l, comuns)]));
-  const melhor = comuns.length ? lojas.reduce((a, b) => (tc[b] < tc[a] ? b : a)) : null;
-  let misto = 0; nomes.forEach((n) => { const ps = lojas.map((l) => doc.artigos[n].lojas[l]).filter(Boolean).map((p) => p.preco); if (ps.length) misto += Math.min(...ps); });
-  const min = (n) => Math.min(...lojas.map((l) => doc.artigos[n].lojas[l]).filter(Boolean).map((p) => p.preco));
-  const cel = (n, l) => { const p = doc.artigos[n].lojas[l]; if (!p) return `<td class="nada">—</td>`;
+  const P = (n, l) => doc.artigos[n].lojas[l];
+  const min = (n) => { const ps = lojas.map((l) => P(n, l)).filter(Boolean).map((p) => p.preco); return ps.length ? Math.min(...ps) : null; };
+  const soma = (l, lista) => lista.reduce((s, n) => s + (P(n, l) ? P(n, l).preco : 0), 0);
+  // 1) comparação justa: só os artigos que as 3 lojas têm
+  const comuns = nomes.filter((n) => lojas.every((l) => P(n, l)));
+  const tc = Object.fromEntries(lojas.map((l) => [l, soma(l, comuns)]));
+  const ordem = [...lojas].sort((a, b) => tc[a] - tc[b]);
+  const melhor = comuns.length ? ordem[0] : null;
+  // 2) o plano mais barato: cada artigo na loja onde está mais barato
+  const plano = Object.fromEntries(lojas.map((l) => [l, []])), semPreco = [];
+  nomes.forEach((n) => { const m = min(n); if (m === null) return semPreco.push(n); const l = lojas.find((x) => P(n, x) && P(n, x).preco === m); plano[l].push(n); });
+  const totPlano = lojas.reduce((s, l) => s + soma(l, plano[l]), 0);
+  const chip = (n, l) => `<span class="chip">${esc(n)} <b>${euro(P(n, l).preco)}</b></span>`;
+  // 3) tabela artigo a artigo
+  const cel = (n, l) => { const p = P(n, l); if (!p) return `<td class="nada">—</td>`;
     const tit = [p.marca, p.nome, p.qtd, p.unit].filter(Boolean).join(" · ") + (p.plus ? " · preço com Lidl Plus" : "");
     return `<td class="${p.preco === min(n) ? "barato" : ""}"><a href="${esc(p.url)}" target="_blank" rel="noopener" title="${esc(tit)}">${euro(p.preco)}${p.plus ? "*" : ""}</a><span class="det">${esc(p.qtd || "")}</span></td>`; };
   const quando = doc.atualizado ? Math.round((Date.now() - Date.parse(doc.atualizado)) / 60000) : null;
   return `<section class="seccao precos">${cabec}
-    ${comuns.length ? `<div class="grelha">${lojas.map((l) => `<div class="mini ${l === melhor ? "vence" : ""}"><span class="rot">${NOME_LOJA[l]}${l === melhor ? " 🏆" : ""}</span><span class="num">${euro(tc[l])}</span><span class="det">${comuns.length} ${comuns.length === 1 ? "artigo que há" : "artigos que há"} nas ${lojas.length} lojas</span></div>`).join("")}</div>` : `<p class="det">Ainda não há artigos que existam nas ${lojas.length} lojas para comparar o total.</p>`}
-    ${melhor ? (() => {
-      const daLoja = nomes.filter((n) => doc.artigos[n].lojas[melhor]);
-      const mistoLoja = daLoja.reduce((s, n) => s + min(n), 0), so = tot(melhor, daLoja), poupa = so - mistoLoja;
-      return `<p class="det" style="margin:6px 0 0">🛒 <b style="color:var(--texto)">Tudo no ${NOME_LOJA[melhor]}:</b> ${euro(so)} · tem ${daLoja.length} dos ${nomes.length} artigos${daLoja.length < nomes.length ? ` (os outros ${nomes.length - daLoja.length} não aparecem no site)` : ""}.</p>
-        <p class="det" style="margin:2px 0 0">🔀 <b style="color:var(--texto)">Cada artigo na loja mais barata:</b> ${euro(misto)} pelos ${nomes.length} artigos${poupa >= 0.5 ? ` · nos mesmos ${daLoja.length} artigos do ${NOME_LOJA[melhor]} poupavas ${euro(poupa)} indo a várias lojas` : " · ir a várias lojas quase não compensa"}.</p>`;
-    })() : `<p class="det" style="margin:6px 0 0">Cada artigo na loja mais barata: <b style="color:var(--texto)">${euro(misto)}</b></p>`}
-    <details><summary>Ver artigo a artigo</summary><div class="tab-precos"><table><thead><tr><th>Artigo</th>${lojas.map((l) => `<th>${NOME_LOJA[l]}</th>`).join("")}</tr></thead>
+    ${melhor ? `<div class="veredito"><span class="trofeu">🏆</span><div><b>O ${NOME_LOJA[melhor]} é o mais barato.</b>
+      <span class="det">Comparando os mesmos ${comuns.length} ${comuns.length === 1 ? "artigo" : "artigos"} que há nas 3 lojas: ${ordem.map((l, k) => `${NOME_LOJA[l]} <b>${euro(tc[l])}</b>${k ? ` (+${euro(tc[l] - tc[melhor])})` : ""}`).join(" · ")}.</span></div></div>`
+      : `<p class="det">Ainda não há artigos que existam nas 3 lojas para dizer qual é a mais barata.</p>`}
+    <h3 class="plano-t">🔀 Se quiseres poupar ao máximo, compra assim</h3>
+    <div class="plano">${lojas.filter((l) => plano[l].length).map((l) => `<div class="plano-l"><div class="plano-cab"><b>${NOME_LOJA[l]}</b><span>${plano[l].length} ${plano[l].length === 1 ? "artigo" : "artigos"} · <b>${euro(soma(l, plano[l]))}</b></span></div><p class="chips">${plano[l].map((n) => chip(n, l)).join("")}</p></div>`).join("")}
+      <div class="plano-tot">Total: <b>${euro(totPlano)}</b> por ${nomes.length - semPreco.length} artigos</div>
+      ${semPreco.length ? `<p class="det">Sem preço em nenhuma loja (${semPreco.length}): ${semPreco.map(esc).join(", ")}.</p>` : ""}</div>
+    <details><summary>Ver todos os preços, artigo a artigo</summary><div class="tab-precos"><table><thead><tr><th>Artigo</th>${lojas.map((l) => `<th>${NOME_LOJA[l]}</th>`).join("")}</tr></thead>
       <tbody>${nomes.map((n) => `<tr><th>${esc(n)}${doc.artigos[n].nota ? `<span class="det">${esc(doc.artigos[n].nota)}</span>` : ""}</th>${lojas.map((l) => cel(n, l)).join("")}</tr>`).join("")}</tbody></table></div>
-      <p class="det">Toca num preço para ver o produto no site da loja. * preço com Lidl Plus. Os preços são os da loja online (no Lidl, os da loja física desta semana) e podem variar em Tomar. ${(doc.fora || []).map(esc).join(" · ")}.</p></details>
+      <p class="det">✓ verde = mais barato. Toca num preço para ver o produto no site da loja. * preço com Lidl Plus. Preços das lojas online (no Lidl, os da loja desta semana); em Tomar podem variar. ${(doc.fora || []).map(esc).join(" · ")}.</p></details>
     <p class="det" style="margin:0">${quando === null ? "" : quando < 2 ? "Atualizado agora" : quando < 120 ? `Atualizado há ${quando} min` : `Atualizado ${fmtData(doc.atualizado.slice(0, 10))}`}${faltam ? ` · ${faltam} ${faltam === 1 ? "artigo novo ainda" : "artigos novos ainda"} a calcular` : ""}</p>
   </section>`;
 }

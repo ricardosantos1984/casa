@@ -436,3 +436,13 @@ body.crianca [data-ocultar], body.crianca [data-repor] { display: none !importan
 .tab-precos td.barato a::after { content: " ✓"; }
 .tab-precos td.nada { color: var(--suave); }
 .tab-precos .det { display: block; font-size: 12px; font-weight: 400; }
+.precos .veredito { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; background: rgba(47,182,115,.12); border: 1px solid rgba(47,182,115,.45); }
+.precos .veredito .trofeu { font-size: 28px; line-height: 1; }
+.precos .veredito b { font-size: 17px; }
+.precos .veredito .det { display: block; margin-top: 4px; }
+.precos .plano-t { margin: 16px 0 6px; font-size: 16px; }
+.precos .plano-l { padding: 10px 0; border-bottom: 1px solid var(--linha, rgba(255,255,255,.08)); }
+.precos .plano-cab { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.precos .plano-cab span { color: var(--suave); }
+.precos .plano .chip b { font-weight: 600; color: var(--verde, #2FB673); margin-left: 4px; }
+.precos .plano-tot { text-align: right; padding: 8px 0; font-size: 16px; }
