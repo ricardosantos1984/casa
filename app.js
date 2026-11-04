@@ -553,11 +553,15 @@ const COLS = {
     campos: [
       { k: "contador", l: "Contador", t: "select", o: ["Luz", "Água", "Gás"], req: 1 },
       { k: "data", l: "Data", t: "date", def: hoje, req: 1 },
-      { k: "leitura", l: "Leitura (o número que aparece no contador)", t: "number", req: 1 },
+      { k: "vazio", l: "Vazio (kWh) — o registo das horas mais baratas", t: "number", se: { k: "contador", v: "Luz" } },
+      { k: "ponta", l: "Ponta (kWh) — o registo das horas mais caras", t: "number", se: { k: "contador", v: "Luz" } },
+      { k: "cheias", l: "Cheias (kWh) — o resto do dia", t: "number", se: { k: "contador", v: "Luz" } },
+      { k: "leitura", l: "Leitura total (na luz, se puseres os 3 registos fica a soma)", t: "number", req: 1 },
       { k: "notas", l: "Notas", t: "textarea" },
     ],
+    preparar: (d) => { if (d.contador === "Luz" && ["vazio", "ponta", "cheias"].every((k) => d[k] !== "" && d[k] != null && !isNaN(+d[k]))) d.leitura = Math.round((+d.vazio + +d.ponta + +d.cheias) * 1000) / 1000; },
     titulo: (d) => `${d.contador}: ${Number(d.leitura).toLocaleString("pt-PT")} ${UNID[d.contador] || ""}`,
-    detalhe: (d) => esc(fmtData(d.data)),
+    detalhe: (d) => junta(fmtData(d.data), d.contador === "Luz" && d.vazio != null && d.vazio !== "" ? `vazio ${d.vazio} · ponta ${d.ponta} · cheias ${d.cheias}` : ""),
     ordem: (a, b) => String(b.data).localeCompare(String(a.data)),
     vazio: "Ainda sem leituras.",
   },
@@ -685,6 +689,10 @@ async function abrirForm(col, it) {
     <button type="button" class="sec" data-a="fechar">Cancelar</button><button type="submit" class="pri">Gravar</button></div></form>`;
   const f = $("form", dlg);
   const lista = $(".anx-lista", f);
+  // campos que só aparecem com certa escolha (ex: registos da luz)
+  const dep = campos.filter((c) => c.se);
+  const ajustarDep = () => dep.forEach((c) => { const el = f.elements.namedItem(c.k), ctl = f.elements.namedItem(c.se.k); const w = el && (el.closest(".campo") || el.closest("label")); if (w && ctl) w.hidden = ctl.value !== c.se.v; });
+  if (dep.length) { [...new Set(dep.map((c) => c.se.k))].forEach((k) => { const ctl = f.elements.namedItem(k); if (ctl) ctl.addEventListener("change", ajustarDep); }); ajustarDep(); }
   const desenharAnexos = async () => {
     if (!anexos.length) { lista.innerHTML = ""; return; }
     lista.innerHTML = anexos.map((a, i) => `<div class="anx" data-i="${i}"><span class="anx-ico">${icoFicheiro(a)}</span>
@@ -722,6 +730,7 @@ async function abrirForm(col, it) {
     if (anexos.some((a) => a.a_carregar)) { $(".msg", f).textContent = "Espera que os ficheiros acabem de carregar."; return; }
     const d = lerForm(f, campos);
     d.anexos = anexos.map(({ a_carregar, ...a }) => a); d.pasta = pasta;
+    if (col.preparar) col.preparar(d);
     const falta = campos.find((c) => c.req && (d[c.k] === "" || d[c.k] == null));
     if (falta) { $(".msg", f).textContent = `Preenche "${falta.l}".`; f.elements.namedItem(falta.k).focus(); return; }
     try {
@@ -2008,17 +2017,56 @@ async function vContadores(el) {
       ${media != null ? `<div class="det">Média: <b>${f(media, 2)} ${u}/dia</b> · ≈ ${f(media * 30, 1)} ${u} por mês${inter.length ? ` · último período: ${f(inter[inter.length - 1].cons, 2)} ${u} em ${inter[inter.length - 1].dias} dias` : ""}</div>` : `<div class="det">Faz mais uma leitura para veres o consumo.</div>`}</div>
       ${semLeitura > 35 ? `<span class="al laranja">Já passaram ${semLeitura} dias desde a última leitura</span>` : ""}
       ${inter.length > 1 ? `<div class="hist"><div class="det">Consumo por dia em cada período</div><div class="hist-b">${inter.map((x, i) => `<div class="hb ${i === inter.length - 1 ? "atual" : ""}"><span class="hv">${f(x.porDia, 1)}</span><i style="height:${(x.porDia / max) * 100}%"></i><span class="hm">${dm(x.ate)}</span></div>`).join("")}</div></div>` : ""}
+      ${(() => { // comparação com o período anterior
+        if (inter.length < 2) return "";
+        const ul = inter[inter.length - 1], an = inter[inter.length - 2];
+        if (!an.porDia) return "";
+        const d = ((ul.porDia - an.porDia) / an.porDia) * 100;
+        return `<p class="comp-ant ${d > 15 ? "pior" : d < -5 ? "melhor" : ""}">${d > 15 ? "⚠️" : d < -5 ? "✅" : "➖"} No último período gastaste <b>${f(ul.porDia, 2)} ${u}/dia</b>, ${Math.abs(d) < 1 ? "o mesmo" : `<b>${d > 0 ? "+" : "−"}${f(Math.abs(d), 0)}%</b>`} do que no período anterior (${f(an.porDia, 2)} ${u}/dia).</p>`;
+      })()}
+      ${c === "Luz" ? blocoHorariosLuz(l, f) : ""}
     </section>`;
   }).join("");
   el.innerHTML = `${cab("Contadores", "Leituras da luz, água e gás. Uma leitura por mês chega para veres os consumos e apanhares faturas estranhas.")}${blocos || ""}`;
   await seccao(el, COLS.leituras);
 }
+/* ---------- luz: consumo por horário (vazio, ponta, cheias) ---------- */
+const HOR_LUZ = [["vazio", "Vazio", "#4C9BFF"], ["cheias", "Cheias", "#F2C94C"], ["ponta", "Ponta", "#FF6B6B"]];
+const temRegistos = (x) => HOR_LUZ.every(([k]) => x[k] != null && x[k] !== "" && !isNaN(+x[k]));
+function periodosLuz(l) {
+  const r = l.filter(temRegistos), out = [];
+  for (let i = 1; i < r.length; i++) {
+    const dias = Math.max(1, Math.round((deIso(r[i].data) - deIso(r[i - 1].data)) / 86400000));
+    const c = Object.fromEntries(HOR_LUZ.map(([k]) => [k, Math.max(0, +r[i][k] - +r[i - 1][k])]));
+    out.push({ ate: r[i].data, dias, ...c, total: HOR_LUZ.reduce((s, [k]) => s + c[k], 0) });
+  }
+  return out;
+}
+function blocoHorariosLuz(l, f) {
+  const ps = periodosLuz(l);
+  if (!ps.length) return `<p class="det">Para veres em que horário gastas mais, regista os 3 números do contador (vazio, ponta e cheias) em cada leitura. Precisas de pelo menos 2 leituras assim.</p>`;
+  const p = ps[ps.length - 1], tot = p.total || 1;
+  const barra = `<div class="luz-barra">${HOR_LUZ.map(([k, n, cor]) => `<i style="width:${(p[k] / tot) * 100}%;background:${cor}" title="${n}"></i>`).join("")}</div>`;
+  const maior = HOR_LUZ.reduce((a, b) => (p[b[0]] > p[a[0]] ? b : a));
+  return `<div class="luz-hor"><div class="det">Em que horário gastas (último período, ${p.dias} dias)</div>${barra}
+    <div class="luz-leg">${HOR_LUZ.map(([k, n, cor]) => `<span><i style="background:${cor}"></i>${n}: <b>${f(p[k], 1)} kWh</b> (${f((p[k] / tot) * 100, 0)}%)</span>`).join("")}</div>
+    <p class="det">Gastas mais em <b>${maior[1].toLowerCase()}</b>.${p.vazio / tot >= 0.4 ? " Com tanto consumo em vazio, uma tarifa bi-horária pode compensar." : ""}</p></div>`;
+}
+
 function alertasContadores(leituras) {
   return ["Luz", "Água", "Gás"].map((c) => {
     const l = leituras.filter((x) => x.contador === c && x.data).sort((a, b) => b.data.localeCompare(a.data));
     if (!l.length) return null;
     const n = -diasAte(l[0].data);
-    return n > 35 ? { nivel: "amarelo", dias: 7, texto: `Última leitura há ${n} dias`, rota: "contadores", tit: "Fazer leitura do contador da " + c.toLowerCase(), ico: "contadores" } : null;
+    if (n > 35) return { nivel: "amarelo", dias: 7, texto: `Última leitura há ${n} dias`, rota: "contadores", tit: "Fazer leitura do contador da " + c.toLowerCase(), ico: "contadores" };
+    // até 10 dias depois de uma leitura nova, avisa se o consumo subiu muito face ao período anterior
+    const v = l.filter((x) => x.leitura != null).slice(0, 3);
+    if (n <= 10 && v.length === 3) {
+      const pd = (a, b) => (a.leitura - b.leitura) / Math.max(1, Math.round((deIso(a.data) - deIso(b.data)) / 86400000));
+      const ul = pd(v[0], v[1]), an = pd(v[1], v[2]);
+      if (an > 0 && ul > an * 1.15) return { nivel: "laranja", dias: 3, texto: `Gastaste +${Math.round(((ul - an) / an) * 100)}% por dia do que no período anterior`, rota: "contadores", tit: (c === "Luz" ? "Luz" : c) + " — consumo a subir", ico: COLS.leituras.ico({ contador: c }) };
+    }
+    return null;
   }).filter(Boolean);
 }
 

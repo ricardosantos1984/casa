@@ -449,3 +449,13 @@ body.crianca [data-ocultar], body.crianca [data-repor] { display: none !importan
 .precos .plano-d { margin-top: 10px; }
 .precos .plano-d > summary { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; cursor: pointer; font-size: 15px; }
 .precos .plano-d > summary .det { font-size: 13px; }
+
+/* ---------- contadores ---------- */
+.comp-ant { margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; background: var(--painel, rgba(255,255,255,.04)); font-size: 14px; }
+.comp-ant.pior { background: var(--laranja-f); }
+.comp-ant.melhor { background: rgba(47,182,115,.14); }
+.luz-hor { margin-top: 10px; }
+.luz-barra { display: flex; height: 14px; border-radius: 7px; overflow: hidden; margin: 6px 0; background: var(--painel); }
+.luz-barra i { display: block; height: 100%; }
+.luz-leg { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }
+.luz-leg i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: middle; }
