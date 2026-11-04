@@ -1305,7 +1305,12 @@ function blocoPrecos(doc, falta) {
   const quando = doc.atualizado ? Math.round((Date.now() - Date.parse(doc.atualizado)) / 60000) : null;
   return `<section class="seccao precos">${cabec}
     ${comuns.length ? `<div class="grelha">${lojas.map((l) => `<div class="mini ${l === melhor ? "vence" : ""}"><span class="rot">${NOME_LOJA[l]}${l === melhor ? " 🏆" : ""}</span><span class="num">${euro(tc[l])}</span><span class="det">${comuns.length} ${comuns.length === 1 ? "artigo que há" : "artigos que há"} nas ${lojas.length} lojas</span></div>`).join("")}</div>` : `<p class="det">Ainda não há artigos que existam nas ${lojas.length} lojas para comparar o total.</p>`}
-    <p class="det" style="margin:6px 0 0">Comprando cada artigo onde é mais barato: <b style="color:var(--texto)">${euro(misto)}</b>${melhor ? ` · só no ${NOME_LOJA[melhor]}: ${euro(tot(melhor, nomes))} (${nomes.filter((n) => doc.artigos[n].lojas[melhor]).length} de ${nomes.length} artigos)` : ""}</p>
+    ${melhor ? (() => {
+      const daLoja = nomes.filter((n) => doc.artigos[n].lojas[melhor]);
+      const mistoLoja = daLoja.reduce((s, n) => s + min(n), 0), so = tot(melhor, daLoja), poupa = so - mistoLoja;
+      return `<p class="det" style="margin:6px 0 0">🛒 <b style="color:var(--texto)">Tudo no ${NOME_LOJA[melhor]}:</b> ${euro(so)} · tem ${daLoja.length} dos ${nomes.length} artigos${daLoja.length < nomes.length ? ` (os outros ${nomes.length - daLoja.length} não aparecem no site)` : ""}.</p>
+        <p class="det" style="margin:2px 0 0">🔀 <b style="color:var(--texto)">Cada artigo na loja mais barata:</b> ${euro(misto)} pelos ${nomes.length} artigos${poupa >= 0.5 ? ` · nos mesmos ${daLoja.length} artigos do ${NOME_LOJA[melhor]} poupavas ${euro(poupa)} indo a várias lojas` : " · ir a várias lojas quase não compensa"}.</p>`;
+    })() : `<p class="det" style="margin:6px 0 0">Cada artigo na loja mais barata: <b style="color:var(--texto)">${euro(misto)}</b></p>`}
     <details><summary>Ver artigo a artigo</summary><div class="tab-precos"><table><thead><tr><th>Artigo</th>${lojas.map((l) => `<th>${NOME_LOJA[l]}</th>`).join("")}</tr></thead>
       <tbody>${nomes.map((n) => `<tr><th>${esc(n)}${doc.artigos[n].nota ? `<span class="det">${esc(doc.artigos[n].nota)}</span>` : ""}</th>${lojas.map((l) => cel(n, l)).join("")}</tr>`).join("")}</tbody></table></div>
       <p class="det">Toca num preço para ver o produto no site da loja. * preço com Lidl Plus. Os preços são os da loja online (no Lidl, os da loja física desta semana) e podem variar em Tomar. ${(doc.fora || []).map(esc).join(" · ")}.</p></details>
