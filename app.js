@@ -1284,6 +1284,35 @@ function imprimirEmenta() {
    COMPRAS
    ===================================================================== */
 let ultimaCat = "";
+/* ---------- comparação de preços (documento "precos-compras", escrito pelo n8n) ---------- */
+const NOME_LOJA = { continente: "Continente", pingodoce: "Pingo Doce", lidl: "Lidl" };
+function blocoPrecos(doc, falta) {
+  const cabec = `<div class="sec-cab"><h2>💶 Onde fica mais barato</h2></div>`;
+  if (!doc || !doc.artigos) return `<section class="seccao precos">${cabec}<p class="vazio">Os preços aparecem aqui uns minutos depois de mudares a lista (o PC com o n8n tem de estar ligado).</p></section>`;
+  const lojas = doc.lojas || Object.keys(NOME_LOJA);
+  const nomes = falta.map((i) => String(i.nome).trim()).filter((n) => doc.artigos[n]);
+  const faltam = falta.length - nomes.length;
+  if (!nomes.length) return `<section class="seccao precos">${cabec}<p class="vazio">A calcular os preços da lista… volta daqui a uns minutos.</p></section>`;
+  const comuns = nomes.filter((n) => lojas.every((l) => doc.artigos[n].lojas[l]));
+  const tot = (l, lista) => lista.reduce((s, n) => s + (doc.artigos[n].lojas[l] ? doc.artigos[n].lojas[l].preco : 0), 0);
+  const tc = Object.fromEntries(lojas.map((l) => [l, tot(l, comuns)]));
+  const melhor = comuns.length ? lojas.reduce((a, b) => (tc[b] < tc[a] ? b : a)) : null;
+  let misto = 0; nomes.forEach((n) => { const ps = lojas.map((l) => doc.artigos[n].lojas[l]).filter(Boolean).map((p) => p.preco); if (ps.length) misto += Math.min(...ps); });
+  const min = (n) => Math.min(...lojas.map((l) => doc.artigos[n].lojas[l]).filter(Boolean).map((p) => p.preco));
+  const cel = (n, l) => { const p = doc.artigos[n].lojas[l]; if (!p) return `<td class="nada">—</td>`;
+    const tit = [p.marca, p.nome, p.qtd, p.unit].filter(Boolean).join(" · ") + (p.plus ? " · preço com Lidl Plus" : "");
+    return `<td class="${p.preco === min(n) ? "barato" : ""}"><a href="${esc(p.url)}" target="_blank" rel="noopener" title="${esc(tit)}">${euro(p.preco)}${p.plus ? "*" : ""}</a><span class="det">${esc(p.qtd || "")}</span></td>`; };
+  const quando = doc.atualizado ? Math.round((Date.now() - Date.parse(doc.atualizado)) / 60000) : null;
+  return `<section class="seccao precos">${cabec}
+    ${comuns.length ? `<div class="grelha">${lojas.map((l) => `<div class="mini ${l === melhor ? "vence" : ""}"><span class="rot">${NOME_LOJA[l]}${l === melhor ? " 🏆" : ""}</span><span class="num">${euro(tc[l])}</span><span class="det">${comuns.length} ${comuns.length === 1 ? "artigo que há" : "artigos que há"} nas ${lojas.length} lojas</span></div>`).join("")}</div>` : `<p class="det">Ainda não há artigos que existam nas ${lojas.length} lojas para comparar o total.</p>`}
+    <p class="det" style="margin:6px 0 0">Comprando cada artigo onde é mais barato: <b style="color:var(--texto)">${euro(misto)}</b>${melhor ? ` · só no ${NOME_LOJA[melhor]}: ${euro(tot(melhor, nomes))} (${nomes.filter((n) => doc.artigos[n].lojas[melhor]).length} de ${nomes.length} artigos)` : ""}</p>
+    <details><summary>Ver artigo a artigo</summary><div class="tab-precos"><table><thead><tr><th>Artigo</th>${lojas.map((l) => `<th>${NOME_LOJA[l]}</th>`).join("")}</tr></thead>
+      <tbody>${nomes.map((n) => `<tr><th>${esc(n)}${doc.artigos[n].nota ? `<span class="det">${esc(doc.artigos[n].nota)}</span>` : ""}</th>${lojas.map((l) => cel(n, l)).join("")}</tr>`).join("")}</tbody></table></div>
+      <p class="det">Toca num preço para ver o produto no site da loja. * preço com Lidl Plus. Os preços são os da loja online (no Lidl, os da loja física desta semana) e podem variar em Tomar. ${(doc.fora || []).map(esc).join(" · ")}.</p></details>
+    <p class="det" style="margin:0">${quando === null ? "" : quando < 2 ? "Atualizado agora" : quando < 120 ? `Atualizado há ${quando} min` : `Atualizado ${fmtData(doc.atualizado.slice(0, 10))}`}${faltam ? ` · ${faltam} ${faltam === 1 ? "artigo novo ainda" : "artigos novos ainda"} a calcular` : ""}</p>
+  </section>`;
+}
+
 async function vCompras(el) {
   const col = COLS.compras;
   const itens = (await store.list("compras")).sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
@@ -1308,6 +1337,7 @@ async function vCompras(el) {
     try { await store.add("compras", { nome, qtd: f.qtd.value.trim(), cat: f.cat.value, comprado: false }); await render(); $("#rapido input[name=nome]")?.focus(); } catch (err) { erro(err); }
   };
   if (so) return;
+  if (falta.length) el.insertAdjacentHTML("beforeend", blocoPrecos(await store.getDoc("precos-compras").catch(() => null), falta));
   el.onchange = async (e) => {
     const id = e.target.dataset.t; if (!id) return;
     const it = itens.find((x) => x.id === id);

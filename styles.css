@@ -423,3 +423,16 @@ dialog::backdrop{background:rgba(3,8,18,.6);-webkit-backdrop-filter:blur(4px);ba
 .acessos-l { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 16px; margin: 10px 0; }
 .acessos-l .det { font-size: 13px; }
 body.crianca [data-ocultar], body.crianca [data-repor] { display: none !important; }
+
+/* ---------- comparação de preços ---------- */
+.precos .mini.vence { outline: 2px solid var(--verde, #2FB673); }
+.tab-precos { overflow-x: auto; margin-top: 8px; }
+.tab-precos table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tab-precos th, .tab-precos td { padding: 7px 8px; border-bottom: 1px solid var(--linha, rgba(255,255,255,.08)); text-align: left; vertical-align: top; }
+.tab-precos thead th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--suave); }
+.tab-precos tbody th { font-weight: 600; min-width: 110px; }
+.tab-precos td a { color: var(--texto); text-decoration: none; font-weight: 600; white-space: nowrap; }
+.tab-precos td.barato a { color: var(--verde, #2FB673); }
+.tab-precos td.barato a::after { content: " ✓"; }
+.tab-precos td.nada { color: var(--suave); }
+.tab-precos .det { display: block; font-size: 12px; font-weight: 400; }
