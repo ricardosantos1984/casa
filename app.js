@@ -139,10 +139,11 @@ const COLS = {
       { k: "cat", l: "Categoria", t: "select", o: CAT_DESP },
       { k: "valor", l: "Valor (€)", t: "money", req: 1 },
       { k: "quem", l: "Pago por", t: "select", o: () => PESSOAS, def: () => EU },
+      { k: "fixa", l: "🔁 Despesa fixa: repetir todos os meses, no mesmo dia", t: "check" },
       { k: "notas", l: "Notas", t: "textarea" },
     ],
     titulo: (d) => d.desc || d.cat,
-    detalhe: (d) => junta(fmtData(d.data), d.cat, d.quem, d.auto ? "🔁 conta fixa" : ""),
+    detalhe: (d) => junta(fmtData(d.data), d.cat, d.quem, d.fixa ? "🔁 fixa (todos os meses)" : d.auto ? "🔁 conta fixa" : ""),
     valor: (d) => euro(d.valor),
     ordem: (a, b) => String(b.data).localeCompare(String(a.data)),
     vazio: "Sem despesas neste mês.",
@@ -1401,6 +1402,27 @@ const contaDevida = (c, mes) => {
   const dif = (+mes.slice(0, 4) - +ini.slice(0, 4)) * 12 + (+mes.slice(5, 7) - +ini.slice(5, 7));
   return dif >= 0 && dif % p === 0;
 };
+/* ---------- despesas marcadas como fixas: copiam-se sozinhas para o mês atual ---------- */
+async function lancarDespesasFixas() {
+  const desp = await store.list("despesas");
+  const series = {};
+  desp.forEach((d) => { if (!d.fixa && !d.serie) return; const k = d.serie || d.id; (series[k] = series[k] || []).push(d); });
+  const mes = hoje().slice(0, 7);
+  let n = 0;
+  for (const [serie, l] of Object.entries(series)) {
+    l.sort((a, b) => String(a.data).localeCompare(String(b.data)));
+    const ult = l[l.length - 1];
+    if (!ult.fixa || !ult.data || ult.data.slice(0, 7) >= mes) continue; // desmarcada, ou já lançada este mês
+    const ultimoDia = new Date(+mes.slice(0, 4), +mes.slice(5, 7), 0).getDate();
+    const data = `${mes}-${pad(Math.min(+ult.data.slice(8, 10) || 1, ultimoDia))}`;
+    if (data > hoje()) continue; // só no dia certo
+    const { id, anexos, pasta, ...resto } = ult;
+    await store.add("despesas", { ...resto, data, fixa: true, serie, auto: true, notas: resto.notas || "" });
+    n++;
+  }
+  if (n) { aviso(`${n} ${n === 1 ? "despesa fixa lançada" : "despesas fixas lançadas"} este mês`); render(); }
+}
+
 async function lancarContas() {
   const contas = (await store.list("contas")).filter((c) => c.lancar !== false && +c.valor > 0);
   if (!contas.length) return;
@@ -2298,7 +2320,7 @@ function mostrarApp(estado) {
   render();
   fotoFamilia().then(atualizarLogo).catch(() => {});
   ligarTempoReal();
-  if (!CRIANCA()) lancarContas().catch((e) => console.error(e));
+  if (!CRIANCA()) lancarContas().then(lancarDespesasFixas).catch((e) => console.error(e));
 }
 function mostrarLogin(msg, ok) {
   if (canal && sb) { sb.removeChannel(canal); canal = null; }
