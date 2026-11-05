@@ -472,3 +472,4 @@ body.crianca [data-ocultar], body.crianca [data-repor] { display: none !importan
 .foto-cont .foto-bts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .foto-cont .foto-bt { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; padding: 10px 16px; border-radius: 999px; }
 .foto-cont .foto-bt svg { width: 20px; height: 20px; }
+.tarifas .tar-sub { margin: 18px 0 4px; font-size: 16px; }

@@ -2129,7 +2129,20 @@ async function blocoTarifasLuz(el) {
   }
   const lista = (t && t.lista) || [];
   const coms = [...new Map(lista.map((o) => [o.com, o.comNome])).entries()];
-  box.innerHTML = `<div class="sec-cab"><h2>⚡ Que operadora de luz fica mais barata</h2></div>${corpo}
+  const g = t && t.gas, cb = t && t.combinado;
+  const gasHtml = g ? `<h3 class="tar-sub">🔥 Gás natural</h3>
+      ${g.atual ? `<div class="det">O vosso agora</div>${linhaOf(g.atual)}` : ""}
+      ${g.poupa != null ? `<div class="veredito ${g.poupa > 20 ? "" : "neutro"}"><span class="trofeu">${g.poupa > 20 ? "💡" : "👍"}</span><div><b>${g.poupa > 20 ? `No gás podiam poupar cerca de ${euro(g.poupa)} por ano` : "No gás, o vosso já está entre os mais baratos"}</b><span class="det">${g.poupa > 20 ? `mudando para ${esc(g.melhor.comNome)} — ${esc(g.melhor.nome)}.` : g.poupa > 0 ? `A melhor alternativa só poupa ${euro(g.poupa)} por ano.` : ""}</span></div></div>` : ""}
+      <details><summary>As mais baratas de gás (${g.total} ofertas na vossa zona)</summary>${(g.top || []).map((o, i) => linhaOf(o, i === 0)).join("")}</details>
+      <p class="det">Contas com ${Number(g.kwhAno).toLocaleString("pt-PT")} kWh/ano (${esc(g.fonte)}), escalão ${esc(g.escalao)}, rede ${g.ord === "TAG" ? "Tagusgás" : esc(g.ord)}.</p>` : "";
+  const combHtml = cb && cb.atual ? (() => {
+    const opcoes = [cb.separado && { tit: "Cada um na operadora mais barata", det: `luz: ${cb.separado.luz.comNome} · gás: ${cb.separado.gas.comNome}`, ano: cb.separado.ano }, cb.dual && { tit: "Luz e gás juntos na mesma operadora", det: `${cb.dual.comNome} — ${cb.dual.nome} (${cb.dual.cicloNome})`, ano: cb.dual.ano, link: cb.dual.link }].filter(Boolean).sort((a, b) => a.ano - b.ano);
+    return `<h3 class="tar-sub">🤝 Luz + gás: juntar compensa?</h3>
+      <div class="tar-of"><div><b>O que pagam agora</b><span class="det">luz EDP + gás regulado</span></div><span class="tar-v">${euro(cb.atual)}<small>/ano</small></span></div>
+      ${opcoes.map((o, i) => `<div class="tar-of ${i === 0 && o.ano < cb.atual ? "melhor" : ""}"><div><b>${esc(o.tit)}</b><span class="det">${esc(o.det)}${o.link ? ` · <a href="${esc(/^https?:/.test(o.link) ? o.link : "https://" + o.link)}" target="_blank" rel="noopener">ver oferta</a>` : ""}</span></div><span class="tar-v">${euro(o.ano)}<small>/ano</small></span></div>`).join("")}
+      <p class="det">${cb.poupa != null && cb.poupa > 0 ? `A melhor opção poupa ${euro(cb.poupa)} por ano face ao que pagam agora.` : "O que têm agora já é o mais barato no total."}${cb.dual ? "" : " Não há ofertas de luz e gás juntos para a vossa zona."}</p>`;
+  })() : "";
+  box.innerHTML = `<div class="sec-cab"><h2>⚡🔥 Luz e gás: que operadora fica mais barata</h2></div><h3 class="tar-sub">⚡ Eletricidade</h3>${corpo}${gasHtml}${combHtml}
     <details ${c.proposta ? "" : "open"}><summary>O nosso contrato de luz</summary><form class="form tar-cfg">
       <label class="campo"><span>Operadora</span><select name="com"><option value="">—</option>${coms.map(([k, n]) => `<option value="${esc(k)}" ${k === c.com ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>
       <label class="campo"><span>Tarifário</span><select name="proposta"></select></label>
