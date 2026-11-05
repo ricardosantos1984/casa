@@ -561,7 +561,7 @@ const COLS = {
       { k: "notas", l: "Notas", t: "textarea" },
     ],
     preparar: (d) => { if (d.contador === "Luz" && ["vazio", "ponta", "cheias"].every((k) => d[k] !== "" && d[k] != null && !isNaN(+d[k]))) d.leitura = Math.round((+d.vazio + +d.ponta + +d.cheias) * 1000) / 1000; },
-    titulo: (d) => `${d.contador}: ${Number(d.leitura).toLocaleString("pt-PT")} ${UNID[d.contador] || ""}`,
+    titulo: (d) => d.leitura == null || d.leitura === "" ? `${d.contador}: ${d.porLer ? "⏳ a IA está a ler a foto…" : d.erroIA ? "⚠️ " + d.erroIA : "sem número"}` : `${d.contador}: ${Number(d.leitura).toLocaleString("pt-PT")} ${UNID[d.contador] || ""}${d.lidoPorIA ? " 📷" : ""}`,
     detalhe: (d) => junta(fmtData(d.data), d.contador === "Luz" && d.vazio != null && d.vazio !== "" ? `vazio ${d.vazio} · ponta ${d.ponta} · cheias ${d.cheias}` : ""),
     ordem: (a, b) => String(b.data).localeCompare(String(a.data)),
     vazio: "Ainda sem leituras.",
@@ -2049,10 +2049,41 @@ async function vContadores(el) {
       ${c === "Luz" ? blocoHorariosLuz(l, f) : ""}
     </section>`;
   }).join("");
-  el.innerHTML = `${cab("Contadores", "Leituras da luz, água e gás. Uma leitura por mês chega para veres os consumos e apanhares faturas estranhas.")}${blocos || ""}`;
+  el.innerHTML = `${cab("Contadores", "Leituras da luz, água e gás. Uma leitura por mês chega para veres os consumos e apanhares faturas estranhas.")}
+    ${CRIANCA() ? "" : `<section class="seccao foto-cont"><h2>📷 Ler o contador por foto</h2>
+      <p class="det" style="margin:0">Tira uma foto ao contador e a IA escreve a leitura por ti, em 1 a 5 minutos (com o PC ligado). Na luz podes juntar até 3 fotos, uma de cada horário que o contador mostra (vazio, ponta e cheias).</p>
+      <div class="foto-bts">${["Luz", "Água", "Gás"].map((c) => `<label class="pri foto-bt">${svg(COLS.leituras.ico({ contador: c }))} ${c}<input type="file" accept="image/*" ${c === "Luz" ? "multiple" : ""} data-foto="${c}" hidden></label>`).join("")}</div></section>`}
+    ${blocos || ""}`;
+  el.querySelectorAll("[data-foto]").forEach((inp) => { inp.onchange = async (e) => { const fs = [...(e.target.files || [])].slice(0, 3); e.target.value = ""; if (fs.length) await leituraPorFoto(inp.dataset.foto, fs); }; });
   if (!CRIANCA()) await blocoTarifasLuz(el);
   await seccao(el, COLS.leituras);
 }
+/* ---------- leitura por foto: a app guarda a foto e o n8n (Gemini) preenche os números ---------- */
+async function reduzirFoto(file, max = 1600) {
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
+  const esc = Math.min(1, max / Math.max(img.width, img.height));
+  const c = document.createElement("canvas"); c.width = Math.round(img.width * esc); c.height = Math.round(img.height * esc);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  URL.revokeObjectURL(img.src);
+  return await new Promise((res) => c.toBlob(res, "image/jpeg", 0.85));
+}
+async function leituraPorFoto(contador, files) {
+  aviso("A enviar a foto…");
+  try {
+    const pasta = `leituras/${novoUid()}`, anexos = [];
+    for (const [i, f] of files.entries()) {
+      const blob = await reduzirFoto(f);
+      const nome = `contador-${contador.toLowerCase()}-${hoje()}-${i + 1}.jpg`.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const caminho = `${pasta}/${Date.now()}-${nome}`;
+      await store.upload(caminho, new File([blob], nome, { type: "image/jpeg" }));
+      anexos.push({ nome, caminho, tipo: "image/jpeg", tamanho: blob.size });
+    }
+    await store.add("leituras", { contador, data: hoje(), leitura: null, porLer: true, anexos, pasta, notas: "" });
+    aviso("Foto enviada — a IA vai ler os números daqui a pouco");
+    render();
+  } catch (err) { erro(err); }
+}
+
 /* ---------- luz: consumo por horário (vazio, ponta, cheias) ---------- */
 const HOR_LUZ = [["vazio", "Vazio", "#4C9BFF"], ["cheias", "Cheias", "#F2C94C"], ["ponta", "Ponta", "#FF6B6B"]];
 const temRegistos = (x) => HOR_LUZ.every(([k]) => x[k] != null && x[k] !== "" && !isNaN(+x[k]));
