@@ -140,11 +140,12 @@ const COLS = {
       { k: "valor", l: "Valor (€)", t: "money", req: 1 },
       { k: "quem", l: "Pago por", t: "select", o: () => PESSOAS, def: () => EU },
       { k: "fixa", l: "🔁 Despesa fixa: repetir todos os meses, no mesmo dia", t: "check" },
-      { k: "fimContrato", l: "📄 Fim do contrato / fidelização (avisa 2 meses antes)", t: "date" },
+      { k: "fimContrato", l: "📄 Fim do contrato, fidelização ou desconto (avisa 2 meses antes)", t: "date" },
+      { k: "fimTipo", l: "O que acaba nessa data", t: "select", o: ["Contrato", "Fidelização", "Desconto"] },
       { k: "notas", l: "Notas", t: "textarea" },
     ],
     titulo: (d) => d.desc || d.cat,
-    detalhe: (d) => junta(fmtData(d.data), d.cat, d.quem, d.fixa ? "🔁 fixa (todos os meses)" : d.auto ? "🔁 conta fixa" : "", d.fimContrato ? "📄 contrato até " + fmtData(d.fimContrato) : ""),
+    detalhe: (d) => junta(fmtData(d.data), d.cat, d.quem, d.fixa ? "🔁 fixa (todos os meses)" : d.auto ? "🔁 conta fixa" : "", d.fimContrato ? "📄 " + (d.fimTipo || "Contrato").toLowerCase() + " até " + fmtData(d.fimContrato) : ""),
     valor: (d) => euro(d.valor),
     ordem: (a, b) => String(b.data).localeCompare(String(a.data)),
     vazio: "Sem despesas neste mês.",
@@ -1410,9 +1411,11 @@ function alertasContratos(despesas) {
   const ult = {};
   despesas.filter((d) => d.fimContrato).forEach((d) => { const k = d.serie || d.id; if (!ult[k] || String(d.data) > String(ult[k].data)) ult[k] = d; });
   return Object.values(ult).map((d) => {
-    const a = alertaData(d.fimContrato, "Fim do contrato", 60);
+    const tipo = d.fimTipo || "Contrato", fem = tipo === "Fidelização";
+    const a = alertaData(d.fimContrato, "Fim " + (fem ? "da " : "do ") + tipo.toLowerCase(), 60);
     if (!a || a.dias < -30) return null;
-    return { ...a, texto: a.dias < 0 ? `Contrato acabou a ${fmtData(d.fimContrato)} · ${rel(a.dias)} — rever o tarifário` : `${a.texto} — altura de negociar ou mudar`, rota: "despesas", tit: d.desc || d.cat, ico: CAT_ICO[d.cat] || "euro" };
+    const dica = tipo === "Desconto" ? "pedir novo desconto ou comparar operadoras" : "altura de negociar ou mudar";
+    return { ...a, texto: a.dias < 0 ? `${tipo} acabou a ${fmtData(d.fimContrato)} · ${rel(a.dias)} — ${tipo === "Desconto" ? "a fatura pode subir" : "rever o tarifário"}` : `${a.texto} — ${dica}`, rota: "despesas", tit: d.desc || d.cat, ico: CAT_ICO[d.cat] || "euro" };
   }).filter(Boolean);
 }
 
