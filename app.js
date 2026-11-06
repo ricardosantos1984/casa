@@ -140,10 +140,11 @@ const COLS = {
       { k: "valor", l: "Valor (€)", t: "money", req: 1 },
       { k: "quem", l: "Pago por", t: "select", o: () => PESSOAS, def: () => EU },
       { k: "fixa", l: "🔁 Despesa fixa: repetir todos os meses, no mesmo dia", t: "check" },
+      { k: "fimContrato", l: "📄 Fim do contrato / fidelização (avisa 2 meses antes)", t: "date" },
       { k: "notas", l: "Notas", t: "textarea" },
     ],
     titulo: (d) => d.desc || d.cat,
-    detalhe: (d) => junta(fmtData(d.data), d.cat, d.quem, d.fixa ? "🔁 fixa (todos os meses)" : d.auto ? "🔁 conta fixa" : ""),
+    detalhe: (d) => junta(fmtData(d.data), d.cat, d.quem, d.fixa ? "🔁 fixa (todos os meses)" : d.auto ? "🔁 conta fixa" : "", d.fimContrato ? "📄 contrato até " + fmtData(d.fimContrato) : ""),
     valor: (d) => euro(d.valor),
     ordem: (a, b) => String(b.data).localeCompare(String(a.data)),
     vazio: "Sem despesas neste mês.",
@@ -973,7 +974,7 @@ async function vInicio(el) {
   const totOrc = Object.values((docOrc && docOrc.cat) || {}).reduce((a, v) => a + (+v || 0), 0);
   const alertas = [];
   ids.forEach((cid, n) => { if (cid === "consultas") return; listas[n].forEach((it) => (COLS[cid].alertas(it) || []).forEach((a) => alertas.push({ ...a, rota: ROTA_DE[cid], tit: COLS[cid].titulo(it), ico: typeof COLS[cid].ico === "function" ? COLS[cid].ico(it) : COLS[cid].ico }))); });
-  alertas.push(...alertasEscolares());
+  alertas.push(...alertasEscolares(), ...alertasContratos(despesas));
   try { alertas.push(...alertasContadores(await store.list("leituras"))); } catch (e) {}
   alertas.sort((a, b) => a.dias - b.dias);
   const consultas = listas[ids.indexOf("consultas")].filter((c) => c.data && diasAte(c.data) >= 0 && diasAte(c.data) <= 60)
@@ -1403,6 +1404,18 @@ const contaDevida = (c, mes) => {
   return dif >= 0 && dif % p === 0;
 };
 /* ---------- despesas marcadas como fixas: copiam-se sozinhas para o mês atual ---------- */
+// fim dos contratos/fidelizações das despesas (ex: Vodafone): avisa 2 meses antes.
+// As despesas fixas repetem-se todos os meses; conta só a mais recente de cada série.
+function alertasContratos(despesas) {
+  const ult = {};
+  despesas.filter((d) => d.fimContrato).forEach((d) => { const k = d.serie || d.id; if (!ult[k] || String(d.data) > String(ult[k].data)) ult[k] = d; });
+  return Object.values(ult).map((d) => {
+    const a = alertaData(d.fimContrato, "Fim do contrato", 60);
+    if (!a || a.dias < -30) return null;
+    return { ...a, texto: a.dias < 0 ? `Contrato acabou a ${fmtData(d.fimContrato)} · ${rel(a.dias)} — rever o tarifário` : `${a.texto} — altura de negociar ou mudar`, rota: "despesas", tit: d.desc || d.cat, ico: CAT_ICO[d.cat] || "euro" };
+  }).filter(Boolean);
+}
+
 async function lancarDespesasFixas() {
   const desp = await store.list("despesas");
   const series = {};
