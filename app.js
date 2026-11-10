@@ -118,6 +118,46 @@ const junta = (...p) => p.filter(Boolean).map(esc).join(" · ");
 
 const CAT_ICO = { "Supermercado": "compras", "Casa": "inicio", "Contas (luz, água, gás, net)": "raio", "Carro": "veiculos", "Combustível": "combustivel", "Saúde": "medicos", "Escola": "escola", "Roupa": "roupa", "Lazer": "lazer", "Restaurantes": "ementas", "Presentes": "presente" };
 const UNID = { "Luz": "kWh", "Água": "m³", "Gás": "m³" };
+const CAT_KIT = ["Água e comida", "Primeiros socorros e medicamentos", "Luz, energia e comunicação", "Documentos e dinheiro", "Higiene", "Roupa e abrigo", "Ferramentas e outros"];
+// lista recomendada para 3 pessoas e 72 horas (recomendações da Proteção Civil / MAI); [artigo, grupo, quantidade, tem validade]
+const KIT_BASE = [
+  ["Água engarrafada", 0, "cerca de 20 litros (≈ 2 L por pessoa por dia, 3 dias)", 1],
+  ["Comida enlatada (atum, salsichas, feijão, grão)", 0, "9 a 12 latas", 1],
+  ["Bolachas, tostas e cereais", 0, "para 3 dias", 1],
+  ["Frutos secos e barras de cereais", 0, "", 1],
+  ["Leite UHT e sumos pequenos", 0, "", 1],
+  ["Abre-latas manual", 0, "1", 0],
+  ["Pratos, copos e talheres descartáveis", 0, "", 0],
+  ["Estojo de primeiros socorros (pensos, compressas, ligaduras, desinfetante)", 1, "1", 0],
+  ["Medicamentos habituais da família", 1, "para 1 semana", 1],
+  ["Paracetamol e ibuprofeno", 1, "", 1],
+  ["Termómetro", 1, "1", 0],
+  ["Máscaras e luvas descartáveis", 1, "", 0],
+  ["Rádio a pilhas ou de manivela", 2, "1", 0],
+  ["Lanternas", 2, "1 por pessoa", 0],
+  ["Pilhas de reserva", 2, "para o rádio e as lanternas", 1],
+  ["Powerbank carregado e cabos", 2, "1", 0],
+  ["Velas e fósforos ou isqueiro", 2, "", 0],
+  ["Apito", 2, "1", 0],
+  ["Cópias dos documentos (CC, cartões de saúde, seguros) em saco estanque", 3, "", 0],
+  ["Dinheiro em notas e moedas", 3, "", 0],
+  ["Contactos de emergência em papel (112, família, médico)", 3, "", 0],
+  ["Chaves suplentes de casa e do carro", 3, "", 0],
+  ["Mapa da zona em papel", 3, "", 0],
+  ["Toalhitas e gel desinfetante", 4, "", 1],
+  ["Papel higiénico", 4, "", 0],
+  ["Sacos do lixo", 4, "", 0],
+  ["Escovas e pasta de dentes", 4, "", 0],
+  ["Produtos de higiene feminina", 4, "", 0],
+  ["Muda de roupa e roupa interior", 5, "1 por pessoa", 0],
+  ["Calçado resistente", 5, "1 par por pessoa", 0],
+  ["Mantas ou mantas térmicas", 5, "1 por pessoa", 0],
+  ["Impermeáveis ou capas de chuva", 5, "1 por pessoa", 0],
+  ["Canivete multiusos", 6, "1", 0],
+  ["Fita adesiva resistente", 6, "1", 0],
+  ["Mochila para levar o essencial", 6, "1", 0],
+  ["Jogo de cartas ou livro para passar o tempo", 6, "", 0],
+];
 const COLS = {
   compras: {
     ico: "compras",
@@ -550,6 +590,28 @@ const COLS = {
     ordem: (a, b) => String(a.cat + a.nome).localeCompare(String(b.cat + b.nome)),
     vazio: "Acrescenta o canalizador, o eletricista, a seguradora…",
   },
+  emergencia: {
+    ico: "kit",
+    id: "emergencia", nome: "Artigos do kit", item: "artigo",
+    campos: [
+      { k: "nome", l: "Artigo", t: "text", req: 1 },
+      { k: "cat", l: "Grupo", t: "select", o: CAT_KIT },
+      { k: "qtd", l: "Quantidade", t: "text" },
+      { k: "tenho", l: "✅ Já está no kit", t: "check" },
+      { k: "validade", l: "Validade (água, comida, medicamentos, pilhas)", t: "date" },
+      { k: "notas", l: "Notas (onde está guardado…)", t: "textarea" },
+    ],
+    titulo: (d) => d.nome,
+    detalhe: (d) => junta(d.cat, d.qtd, d.validade ? "validade " + fmtData(d.validade) : ""),
+    alertas: (d) => {
+      if (!d.tenho || !d.validade) return [];
+      const a = alertaData(d.validade, "Validade", 30);
+      return a ? [{ ...a, texto: a.dias < 0 ? `Fora da validade desde ${fmtData(d.validade)} — trocar` : `${a.texto} — trocar` }] : [];
+    },
+    ordem: (a, b) => (CAT_KIT.indexOf(a.cat) - CAT_KIT.indexOf(b.cat)) || String(a.nome).localeCompare(String(b.nome)),
+    acao: { l: (d) => (d.tenho ? "✅ Tenho" : "❌ Falta"), fn: async (d) => { await store.update(d.id, { ...semId(d), tenho: !d.tenho }); } },
+    vazio: "Ainda não há artigos. Carrega a lista recomendada acima.",
+  },
   leituras: {
     ico: (d) => ({ "Luz": "raio", "Água": "gota", "Gás": "chama" })[d.contador] || "contadores",
     id: "leituras", nome: "Leituras", item: "leitura",
@@ -764,7 +826,7 @@ const cab = (titulo, sub) => `<div class="cab"><div><h1>${titulo}</h1>${sub ? `<
 /* =====================================================================
    INÍCIO
    ===================================================================== */
-const ROTA_DE = { veiculos: "veiculos", tarefas: "casa", garantias: "casa", datas: "familia", documentos: "familia", escola_testes: "escola", escola_eventos: "escola", fichas_carregadas: "estudo", viagens: "viagens", ferias: "ferias", aniversarios: "ferias", despensa: "despensa", consultas: "medicos" };
+const ROTA_DE = { emergencia: "emergencia", veiculos: "veiculos", tarefas: "casa", garantias: "casa", datas: "familia", documentos: "familia", escola_testes: "escola", escola_eventos: "escola", fichas_carregadas: "estudo", viagens: "viagens", ferias: "ferias", aniversarios: "ferias", despensa: "despensa", consultas: "medicos" };
 
 let FOTO;
 const chaveFoto = () => "foto-" + (EU || "eu").toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g, "");
@@ -976,6 +1038,7 @@ async function vInicio(el) {
   const alertas = [];
   ids.forEach((cid, n) => { if (cid === "consultas") return; listas[n].forEach((it) => (COLS[cid].alertas(it) || []).forEach((a) => alertas.push({ ...a, rota: ROTA_DE[cid], tit: COLS[cid].titulo(it), ico: typeof COLS[cid].ico === "function" ? COLS[cid].ico(it) : COLS[cid].ico }))); });
   alertas.push(...alertasEscolares(), ...alertasContratos(despesas));
+  try { const k = await store.getDoc("kit-emergencia"); if (k && k.revisto) { const p = somaMeses(k.revisto, 6), n = diasAte(p); if (n <= 7) alertas.push({ nivel: n < 0 ? "laranja" : "amarelo", dias: n, texto: `Rever o kit (validades, pilhas, powerbank) · ${rel(n)}`, rota: "emergencia", tit: "Kit de emergência", ico: "kit" }); } } catch (e) {}
   try { alertas.push(...alertasContadores(await store.list("leituras"))); } catch (e) {}
   alertas.sort((a, b) => a.dias - b.dias);
   const consultas = listas[ids.indexOf("consultas")].filter((c) => c.data && diasAte(c.data) >= 0 && diasAte(c.data) <= 60)
@@ -1863,6 +1926,8 @@ async function exportarExcel() {
 
 /* ---------- menu (ícones) ---------- */
 const ICO = {
+  kit: '<rect x="3.5" y="7" width="17" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M12 10.5v6M9 13.5h6"/>',
+  emergencia: '<rect x="3.5" y="7" width="17" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M12 10.5v6M9 13.5h6"/>',
   inicio: '<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
   ementas: '<path d="M6 3v7a2 2 0 0 0 4 0V3M8 12v9M17 21V3c-2 1-3 3-3 7s1 4 3 4"/>',
   compras: '<path d="M3 4h2.5l2.2 11h10.6L21 7.5H6.4"/><circle cx="9.5" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/>',
@@ -1900,7 +1965,7 @@ const ICO = {
   euro: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.8a4 4 0 1 0 0 6.4M7.5 11h6M7.5 13.5h6"/>',
   mais: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
 };
-const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["escola", "Escola Ema"], ["estudo", "Estudo"], ["viagens", "Viagens"], ["ferias", "Férias e aniversários"], ["medicos", "Médicos"], ["tarefas", "Tarefas e mesada"], ["despensa", "Despensa"], ["contactos", "Contactos úteis"], ["contadores", "Contadores"], ["dados", "Gerir dados"]];
+const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["escola", "Escola Ema"], ["estudo", "Estudo"], ["viagens", "Viagens"], ["ferias", "Férias e aniversários"], ["medicos", "Médicos"], ["tarefas", "Tarefas e mesada"], ["despensa", "Despensa"], ["contactos", "Contactos úteis"], ["contadores", "Contadores"], ["emergencia", "Kit de emergência"], ["dados", "Gerir dados"]];
 const svg = (k) => `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]}</svg>`;
 let NA_BARRA = ["inicio", "ementas", "compras", "despesas"];
 // secções que quem entrou pode ver (as crianças só veem as escolhidas pelos pais)
@@ -2176,6 +2241,52 @@ async function blocoTarifasLuz(el) {
   };
 }
 
+/* =====================================================================
+   KIT DE EMERGÊNCIA (72 horas)
+   ===================================================================== */
+async function vEmergencia(el) {
+  el.innerHTML = cab("Kit de emergência", "O que a família precisa para aguentar 72 horas sem luz, sem água ou sem sair de casa.");
+  const [itens, rev, compras] = await Promise.all([store.list("emergencia"), store.getDoc("kit-emergencia"), store.list("compras")]);
+  const box = document.createElement("section");
+  box.className = "seccao kit";
+  const n = itens.filter((i) => i.tenho).length, tot = itens.length, falta = itens.filter((i) => !i.tenho);
+  const proxRev = rev && rev.revisto ? somaMeses(rev.revisto, 6) : null;
+  box.innerHTML = tot ? `<div class="resumo">
+      <div class="total">${n} de ${tot} prontos</div>
+      <div class="barra kit-b"><span>Kit</span><span class="b"><i style="width:${tot ? (n / tot) * 100 : 0}%"></i></span><b>${Math.round((n / (tot || 1)) * 100)}%</b></div>
+      <div class="det">${falta.length ? `Faltam ${falta.length}: ${esc(falta.slice(0, 4).map((i) => i.nome.split(" (")[0]).join(" · "))}${falta.length > 4 ? "…" : ""}` : "Está tudo no kit. 👏"}</div>
+      <div class="det">${rev && rev.revisto ? `Última revisão: ${fmtData(rev.revisto)} · próxima: ${fmtData(proxRev)}` : "Ainda não foi revisto. Revê-lo de 6 em 6 meses (validades, pilhas, powerbank)."}</div>
+      <div class="acoes">${falta.length ? `<button class="sec" data-k="compras">🛒 Pôr o que falta na lista de compras</button>` : ""}<button class="sec" data-k="rever">✅ Revi o kit hoje</button></div>
+    </div>` : `<div class="resumo"><div class="total">Montar o kit</div><div class="det">Carrega a lista recomendada para 3 pessoas e 72 horas (${KIT_BASE.length} artigos) e depois vai marcando o que já têm.</div><div class="acoes"><button class="pri" data-k="carregar">Carregar a lista recomendada</button></div></div>`;
+  box.insertAdjacentHTML("beforeend", `<details class="kit-dicas"><summary>Dicas</summary><ul>
+    <li>Guardem o kit num sítio fácil de apanhar à saída (ex: perto da porta ou na despensa), numa mochila ou caixa.</li>
+    <li>Água: contem cerca de 2 litros por pessoa por dia; para os 3, 3 dias ≈ 20 litros.</li>
+    <li>Se houver um apagão ou mau tempo, sigam as indicações da Proteção Civil na rádio. Em perigo, liguem 112.</li>
+    <li>Marquem a validade da água, da comida, dos medicamentos e das pilhas: a app avisa 1 mês antes.</li>
+    <li>Combinem um ponto de encontro da família, caso não estejam juntos.</li></ul></details>`);
+  el.appendChild(box);
+  box.onclick = async (e) => {
+    const b = e.target.closest("[data-k]"); if (!b) return;
+    b.disabled = true;
+    try {
+      if (b.dataset.k === "carregar") {
+        for (const [nome, c, qtd] of KIT_BASE) await store.add("emergencia", { nome, cat: CAT_KIT[c], qtd, tenho: false, validade: "", notas: "" });
+        aviso("Lista carregada: marca o que já têm");
+      } else if (b.dataset.k === "rever") {
+        await store.setDoc("kit-emergencia", { ...(rev || {}), revisto: hoje() });
+        aviso("Revisão registada · a próxima é daqui a 6 meses");
+      } else if (b.dataset.k === "compras") {
+        const ja = new Set(compras.filter((c) => !c.comprado).map((c) => String(c.nome).toLowerCase()));
+        let k = 0;
+        for (const i of falta) { const nome = i.nome.split(" (")[0]; if (ja.has(nome.toLowerCase())) continue; await store.add("compras", { nome, qtd: i.qtd && i.qtd.length < 25 ? i.qtd : "", cat: secaoDe(nome), comprado: false, pedido_por: EU }); k++; }
+        aviso(k ? `${k} ${k === 1 ? "artigo juntado" : "artigos juntados"} à lista de compras 🛒` : "Já estavam todos na lista de compras");
+      }
+      render();
+    } catch (err) { erro(err); b.disabled = false; }
+  };
+  await seccao(el, COLS.emergencia);
+}
+
 function alertasContadores(leituras) {
   return ["Luz", "Água", "Gás"].map((c) => {
     const l = leituras.filter((x) => x.contador === c && x.data).sort((a, b) => b.data.localeCompare(a.data));
@@ -2332,7 +2443,7 @@ async function apagarVarios(itens) {
 /* =====================================================================
    NAVEGAÇÃO
    ===================================================================== */
-const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, estudo: vEstudo, viagens: vViagens, ferias: vFerias, medicos: vMedicos, tarefas: vTarefas, despensa: vDespensa, contactos: vContactos, contadores: vContadores, dados: vDados };
+const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, estudo: vEstudo, viagens: vViagens, ferias: vFerias, medicos: vMedicos, tarefas: vTarefas, despensa: vDespensa, contactos: vContactos, contadores: vContadores, emergencia: vEmergencia, dados: vDados };
 let ROTA_ARGS = [];
 async function render() {
   if (!store) return;
