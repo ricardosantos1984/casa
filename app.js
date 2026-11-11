@@ -839,7 +839,7 @@ const cab = (titulo, sub) => `<div class="cab"><div><h1>${titulo}</h1>${sub ? `<
 /* =====================================================================
    INÍCIO
    ===================================================================== */
-const ROTA_DE = { emergencia: "emergencia", livros: "livros", veiculos: "veiculos", tarefas: "casa", garantias: "casa", datas: "familia", documentos: "familia", escola_testes: "escola", escola_eventos: "escola", fichas_carregadas: "estudo", viagens: "viagens", ferias: "ferias", aniversarios: "ferias", despensa: "despensa", consultas: "medicos" };
+const ROTA_DE = { emergencia: "emergencia", veiculos: "veiculos", tarefas: "casa", garantias: "casa", datas: "familia", documentos: "familia", escola_testes: "escola", escola_eventos: "escola", fichas_carregadas: "estudo", viagens: "viagens", ferias: "ferias", aniversarios: "ferias", despensa: "despensa", consultas: "medicos" };
 
 let FOTO;
 const chaveFoto = () => "foto-" + (EU || "eu").toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g, "");
@@ -1049,7 +1049,7 @@ async function vInicio(el) {
   const sel = (docE && docE.sel) || {};
   const totOrc = Object.values((docOrc && docOrc.cat) || {}).reduce((a, v) => a + (+v || 0), 0);
   const alertas = [];
-  ids.forEach((cid, n) => { if (cid === "consultas") return; listas[n].forEach((it) => (COLS[cid].alertas(it) || []).forEach((a) => alertas.push({ ...a, rota: ROTA_DE[cid], tit: COLS[cid].titulo(it), ico: typeof COLS[cid].ico === "function" ? COLS[cid].ico(it) : COLS[cid].ico }))); });
+  ids.forEach((cid, n) => { if (cid === "consultas" || !COLS[cid] || typeof COLS[cid].alertas !== "function") return; listas[n].forEach((it) => (COLS[cid].alertas(it) || []).forEach((a) => alertas.push({ ...a, rota: ROTA_DE[cid], tit: COLS[cid].titulo(it), ico: typeof COLS[cid].ico === "function" ? COLS[cid].ico(it) : COLS[cid].ico }))); });
   alertas.push(...alertasEscolares(), ...alertasContratos(despesas));
   try { const k = await store.getDoc("kit-emergencia"); if (k && k.revisto) { const p = somaMeses(k.revisto, 6), n = diasAte(p); if (n <= 7) alertas.push({ nivel: n < 0 ? "laranja" : "amarelo", dias: n, texto: `Rever o kit (validades, pilhas, powerbank) · ${rel(n)}`, rota: "emergencia", tit: "Kit de emergência", ico: "kit" }); } } catch (e) {}
   try { alertas.push(...alertasContadores(await store.list("leituras"))); } catch (e) {}
