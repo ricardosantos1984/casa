@@ -590,6 +590,19 @@ const COLS = {
     ordem: (a, b) => String(a.cat + a.nome).localeCompare(String(b.cat + b.nome)),
     vazio: "Acrescenta o canalizador, o eletricista, a seguradora…",
   },
+  livros: {
+    ico: "livros",
+    id: "livros", nome: "Livros", item: "livro",
+    campos: [
+      { k: "titulo", l: "Título", t: "text", req: true },
+      { k: "autor", l: "Autor", t: "text" },
+      { k: "para", l: "Para quem", t: "select", o: ["Ema", "Todos"] },
+      { k: "notas", l: "Notas", t: "textarea" },
+    ],
+    vazio: "Ainda não há livros.",
+    titulo: (it) => it.titulo,
+    detalhe: (it) => { const f = ficheiroLivro(it); return junta(it.autor, it.para ? "Para: " + it.para : "", f ? (f.tipoLivro === "pdf" ? "📄 PDF" : "📘 EPUB") : "⚠️ falta juntar o ficheiro do livro (EPUB ou PDF)"); },
+  },
   emergencia: {
     ico: "kit",
     id: "emergencia", nome: "Artigos do kit", item: "artigo",
@@ -826,7 +839,7 @@ const cab = (titulo, sub) => `<div class="cab"><div><h1>${titulo}</h1>${sub ? `<
 /* =====================================================================
    INÍCIO
    ===================================================================== */
-const ROTA_DE = { emergencia: "emergencia", veiculos: "veiculos", tarefas: "casa", garantias: "casa", datas: "familia", documentos: "familia", escola_testes: "escola", escola_eventos: "escola", fichas_carregadas: "estudo", viagens: "viagens", ferias: "ferias", aniversarios: "ferias", despensa: "despensa", consultas: "medicos" };
+const ROTA_DE = { emergencia: "emergencia", livros: "livros", veiculos: "veiculos", tarefas: "casa", garantias: "casa", datas: "familia", documentos: "familia", escola_testes: "escola", escola_eventos: "escola", fichas_carregadas: "estudo", viagens: "viagens", ferias: "ferias", aniversarios: "ferias", despensa: "despensa", consultas: "medicos" };
 
 let FOTO;
 const chaveFoto = () => "foto-" + (EU || "eu").toLowerCase().normalize("NFD").replace(/[^a-z0-9]/g, "");
@@ -1926,6 +1939,8 @@ async function exportarExcel() {
 
 /* ---------- menu (ícones) ---------- */
 const ICO = {
+  desenhos: '<path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.8 1.6-1.6 0-.5-.2-.8-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.7-1.6 1.6-1.6H16a5 5 0 0 0 5-5C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7.3" r="1.2"/><circle cx="15" cy="7.3" r="1.2"/>',
+  livros: '<path d="M4 5a2 2 0 0 1 2-2h5v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-5v17h5a2 2 0 0 1 2 2z"/>',
   kit: '<rect x="3.5" y="7" width="17" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M12 10.5v6M9 13.5h6"/>',
   emergencia: '<rect x="3.5" y="7" width="17" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M12 10.5v6M9 13.5h6"/>',
   inicio: '<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
@@ -1965,7 +1980,7 @@ const ICO = {
   euro: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.8a4 4 0 1 0 0 6.4M7.5 11h6M7.5 13.5h6"/>',
   mais: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
 };
-const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["escola", "Escola Ema"], ["estudo", "Estudo"], ["viagens", "Viagens"], ["ferias", "Férias e aniversários"], ["medicos", "Médicos"], ["tarefas", "Tarefas e mesada"], ["despensa", "Despensa"], ["contactos", "Contactos úteis"], ["contadores", "Contadores"], ["emergencia", "Kit de emergência"], ["dados", "Gerir dados"]];
+const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["escola", "Escola Ema"], ["estudo", "Estudo"], ["viagens", "Viagens"], ["ferias", "Férias e aniversários"], ["medicos", "Médicos"], ["tarefas", "Tarefas e mesada"], ["despensa", "Despensa"], ["contactos", "Contactos úteis"], ["contadores", "Contadores"], ["emergencia", "Kit de emergência"], ["desenhos", "Desenhos"], ["livros", "Livros"], ["dados", "Gerir dados"]];
 const svg = (k) => `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]}</svg>`;
 let NA_BARRA = ["inicio", "ementas", "compras", "despesas"];
 // secções que quem entrou pode ver (as crianças só veem as escolhidas pelos pais)
@@ -2309,8 +2324,8 @@ function alertasContadores(leituras) {
    ===================================================================== */
 const campoData = (col) => (col.campos.find((c) => c.t === "date") || {}).k;
 /* ---------- acessos das crianças (só os pais veem; regras em acessos.sql) ---------- */
-const SECOES_CRIANCA = ["ementas", "compras", "escola", "estudo", "tarefas", "ferias", "familia", "viagens", "contactos", "despensa", "casa", "medicos", "despesas", "veiculos", "contadores"];
-const NOTA_SEC = { ementas: "só ver", compras: "ver e acrescentar", estudo: "fazer fichas", tarefas: "marcar as tarefas feitas", despesas: "inclui o orçamento", medicos: "inclui saúde de todos" };
+const SECOES_CRIANCA = ["desenhos", "livros", "ementas", "compras", "escola", "estudo", "tarefas", "ferias", "familia", "viagens", "contactos", "despensa", "casa", "medicos", "despesas", "veiculos", "contadores"];
+const NOTA_SEC = { desenhos: "bloco de desenho", livros: "ler os livros", ementas: "só ver", compras: "ver e acrescentar", estudo: "fazer fichas", tarefas: "marcar as tarefas feitas", despesas: "inclui o orçamento", medicos: "inclui saúde de todos" };
 async function cartaoAcessos(el) {
   if (!sb || CRIANCA()) return;
   const { data, error } = await sb.from("membros").select("email,nome,papel,secoes").eq("papel", "crianca");
@@ -2443,7 +2458,7 @@ async function apagarVarios(itens) {
 /* =====================================================================
    NAVEGAÇÃO
    ===================================================================== */
-const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, estudo: vEstudo, viagens: vViagens, ferias: vFerias, medicos: vMedicos, tarefas: vTarefas, despensa: vDespensa, contactos: vContactos, contadores: vContadores, emergencia: vEmergencia, dados: vDados };
+const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, estudo: vEstudo, viagens: vViagens, ferias: vFerias, medicos: vMedicos, tarefas: vTarefas, despensa: vDespensa, contactos: vContactos, contadores: vContadores, emergencia: vEmergencia, desenhos: vDesenhos, livros: vLivros, dados: vDados };
 let ROTA_ARGS = [];
 async function render() {
   if (!store) return;
@@ -2582,6 +2597,179 @@ async function iniciar() {
 
   const { data } = await sb.auth.getSession();
   if (data.session) await entrar(data.session); else mostrarLogin();
+}
+
+/* ---------- Desenhos: bloco de desenho para a Ema (fica guardado neste telemóvel; pode ir para a galeria) ---------- */
+const CORES_DESENHO = ["#111111", "#FFFFFF", "#E53935", "#FB8C00", "#FDD835", "#43A047", "#00ACC1", "#1E88E5", "#8E24AA", "#EC407A", "#8D6E63", "#9E9E9E"];
+async function vDesenhos(el) {
+  el.innerHTML = cab("Desenhos", "Desenha com o dedo. Quando gostares do desenho, guarda-o na galeria do telemóvel.");
+  const box = document.createElement("section");
+  box.className = "seccao desenho";
+  box.innerHTML = `<div class="ds-ferr" role="toolbar" aria-label="Ferramentas de desenho">
+      <div class="ds-cores">${CORES_DESENHO.map((c, i) => `<button type="button" class="ds-cor${i === 0 ? " on" : ""}" data-cor="${c}" style="--c:${c}" aria-label="Cor ${c}"></button>`).join("")}
+        <label class="ds-cor ds-mais" title="Outra cor" aria-label="Escolher outra cor"><input type="color" value="#ff6f00"></label></div>
+      <div class="ds-linha">
+        <div class="ds-tam">${[4, 10, 20, 36].map((t, i) => `<button type="button" class="ds-t${i === 1 ? " on" : ""}" data-t="${t}" aria-label="Pincel ${t}"><i style="width:${Math.min(t, 26)}px;height:${Math.min(t, 26)}px"></i></button>`).join("")}</div>
+        <button type="button" class="ds-b" data-a="borracha" aria-pressed="false" title="Borracha">🧽</button>
+        <button type="button" class="ds-b" data-a="balde" aria-pressed="false" title="Pintar o fundo">🪣</button>
+        <button type="button" class="ds-b" data-a="desfazer" title="Desfazer">↩️</button>
+        <button type="button" class="ds-b" data-a="limpar" title="Folha nova">🗑️</button>
+      </div>
+    </div>
+    <div class="ds-papel"><canvas aria-label="Folha de desenho"></canvas></div>
+    <div class="acoes ds-acoes"><button type="button" class="pri" data-a="galeria">🖼️ Guardar na galeria</button><button type="button" class="sec" data-a="partilhar">📤 Enviar…</button></div>
+    <p class="det ds-nota">O desenho fica guardado neste telemóvel enquanto desenhas, mesmo que saias da app.</p>`;
+  el.appendChild(box);
+  const cv = $("canvas", box), papel = $(".ds-papel", box), ctx = cv.getContext("2d");
+  const CHAVE = "casa-desenho-" + (EU || "eu");
+  let cor = CORES_DESENHO[0], tam = 10, borracha = false, balde = false, fundo = "#FFFFFF";
+  const historico = [];
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  function tamanhoFolha() {
+    const w = papel.clientWidth, h = Math.round(Math.min(Math.max(w * 1.3, 320), window.innerHeight * 0.62));
+    return [w, h];
+  }
+  function preparar(imagem) {
+    const [w, h] = tamanhoFolha();
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.height = h + "px";
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = fundo; ctx.fillRect(0, 0, cv.width, cv.height);
+    if (imagem) ctx.drawImage(imagem, 0, 0, cv.width, cv.height);
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+  }
+  const guardarLocal = () => { try { localStorage.setItem(CHAVE, JSON.stringify({ img: cv.toDataURL("image/png"), fundo })); } catch (e) {} };
+  const guardarPasso = () => { try { historico.push(ctx.getImageData(0, 0, cv.width, cv.height)); if (historico.length > 25) historico.shift(); } catch (e) {} };
+  // recupera o último desenho
+  let salvo = null; try { salvo = JSON.parse(localStorage.getItem(CHAVE) || "null"); } catch (e) {}
+  if (salvo && salvo.img) { fundo = salvo.fundo || fundo; const im = new Image(); im.onload = () => preparar(im); im.src = salvo.img; preparar(); } else preparar();
+  // desenhar com o dedo (ou caneta / rato)
+  let aDesenhar = false, ult = null;
+  const ponto = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * dpr, (e.clientY - r.top) * dpr, e.pressure && e.pointerType === "pen" ? e.pressure : 0.6]; };
+  const traco = (a, b) => {
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = borracha ? fundo : cor;
+    ctx.lineWidth = tam * dpr * (borracha ? 1.6 : 0.6 + b[2] * 0.7);
+    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+  };
+  cv.addEventListener("pointerdown", (e) => {
+    e.preventDefault(); cv.setPointerCapture(e.pointerId);
+    guardarPasso();
+    if (balde) { pintarFundo(borracha ? "#FFFFFF" : cor); balde = false; ferr("balde", false); return; }
+    aDesenhar = true; ult = ponto(e); traco(ult, [ult[0] + 0.1, ult[1] + 0.1, ult[2]]);
+  });
+  cv.addEventListener("pointermove", (e) => { if (!aDesenhar) return; e.preventDefault(); const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; for (const ev of evs) { const p = ponto(ev); traco(ult, p); ult = p; } });
+  const fim = () => { if (aDesenhar) { aDesenhar = false; guardarLocal(); } };
+  cv.addEventListener("pointerup", fim); cv.addEventListener("pointercancel", fim); cv.addEventListener("pointerleave", fim);
+  // balde: muda a cor do fundo mantendo o desenho (troca os píxeis da cor de fundo antiga)
+  function pintarFundo(nova) {
+    const img = ctx.getImageData(0, 0, cv.width, cv.height), d = img.data;
+    const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+    const [r0, g0, b0] = hex(fundo), [r1, g1, b1] = hex(nova);
+    for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - r0) < 24 && Math.abs(d[i + 1] - g0) < 24 && Math.abs(d[i + 2] - b0) < 24) { d[i] = r1; d[i + 1] = g1; d[i + 2] = b1; }
+    ctx.putImageData(img, 0, 0); fundo = nova; guardarLocal();
+  }
+  const marcar = (sel, alvo) => box.querySelectorAll(sel).forEach((b) => b.classList.toggle("on", b === alvo));
+  const ferr = (nome, ligar) => { const b = $(`[data-a="${nome}"]`, box); b.classList.toggle("on", ligar); b.setAttribute("aria-pressed", ligar); };
+  box.querySelectorAll(".ds-cor[data-cor]").forEach((b) => b.onclick = () => { cor = b.dataset.cor; borracha = false; ferr("borracha", false); marcar(".ds-cor", b); });
+  $(".ds-mais input", box).oninput = (e) => { cor = e.target.value; borracha = false; ferr("borracha", false); marcar(".ds-cor", $(".ds-mais", box)); $(".ds-mais", box).style.setProperty("--c", cor); };
+  box.querySelectorAll(".ds-t").forEach((b) => b.onclick = () => { tam = +b.dataset.t; marcar(".ds-t", b); });
+  const nomeFicheiro = () => "desenho-" + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "") + ".png";
+  const ficheiro = () => new Promise((ok) => cv.toBlob((b) => ok(new File([b], nomeFicheiro(), { type: "image/png" })), "image/png"));
+  box.querySelector(".ds-linha").onclick = async (e) => {
+    const b = e.target.closest("[data-a]"); if (!b) return;
+    const a = b.dataset.a;
+    if (a === "borracha") { borracha = !borracha; balde = false; ferr("borracha", borracha); ferr("balde", false); }
+    else if (a === "balde") { balde = !balde; borracha = false; ferr("balde", balde); ferr("borracha", false); }
+    else if (a === "desfazer") { const p = historico.pop(); if (p) { ctx.putImageData(p, 0, 0); guardarLocal(); } }
+    else if (a === "limpar") { if (!confirm("Começar uma folha nova? O desenho atual desaparece (guarda-o primeiro na galeria se gostares dele).")) return; guardarPasso(); fundo = "#FFFFFF"; preparar(); guardarLocal(); }
+  };
+  $(".ds-acoes", box).onclick = async (e) => {
+    const b = e.target.closest("[data-a]"); if (!b) return;
+    const f = await ficheiro();
+    if (b.dataset.a === "partilhar" && navigator.canShare && navigator.canShare({ files: [f] })) {
+      try { await navigator.share({ files: [f], title: "O meu desenho" }); } catch (err) {}
+      return;
+    }
+    // guardar: descarrega a imagem (no Android fica na galeria, no álbum "Download"/"Transferências")
+    const url = URL.createObjectURL(f), a = document.createElement("a");
+    a.href = url; a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    aviso("Desenho guardado! 🎨 Está na galeria, no álbum Transferências (Download).");
+  };
+  // se o ecrã rodar ou mudar de tamanho, mantém o desenho
+  let tRes = 0; const aoRedim = () => { clearTimeout(tRes); tRes = setTimeout(() => { if (!document.body.contains(cv)) return window.removeEventListener("resize", aoRedim); const im = new Image(); im.onload = () => preparar(im); im.src = cv.toDataURL(); }, 250); };
+  window.addEventListener("resize", aoRedim);
+}
+
+/* ---------- Livros: biblioteca de ebooks (EPUB e PDF) carregados pelos pais ---------- */
+const COR_LIVRO = ["#4C9BFF", "#FF7A6E", "#FFB45E", "#43A047", "#8E24AA", "#00ACC1", "#EC407A", "#8D6E63"];
+async function vLivros(el) {
+  el.innerHTML = cab("Livros", CRIANCA() ? "Os teus livros. Toca num para ler; a app lembra-se da página onde ficaste." : "Ebooks para a família ler na app (EPUB ou PDF). Junta o ficheiro do livro como anexo.");
+  const livros = (await store.list("livros")).sort((a, b) => (a.titulo || "").localeCompare(b.titulo || "", "pt"));
+  const est = document.createElement("section");
+  est.className = "seccao livros";
+  const prog = (l) => { try { return +(JSON.parse(localStorage.getItem("casa-livro-" + l.id) || "{}").pct || 0); } catch (e) { return 0; } };
+  est.innerHTML = `<div class="sec-cab"><h2>📚 Estante</h2></div>` + (livros.length ? `<div class="estante">${livros.map((l, i) => {
+    const f = ficheiroLivro(l), p = prog(l);
+    return `<button type="button" class="livro" data-id="${l.id}" ${f ? "" : "disabled"} style="--c:${COR_LIVRO[i % COR_LIVRO.length]}">
+      <span class="capa"><b>${esc(l.titulo || "Sem título")}</b>${l.autor ? `<small>${esc(l.autor)}</small>` : ""}<em>${f ? (f.tipoLivro === "pdf" ? "PDF" : "EPUB") : "sem ficheiro"}</em></span>
+      ${p ? `<span class="lv-prog" aria-label="Lido ${p}%"><i style="width:${p}%"></i></span>` : ""}</button>`; }).join("")}</div>`
+    : `<p class="vazio">${CRIANCA() ? "Ainda não há livros. Pede aos pais para juntarem um! 📖" : "Ainda não há livros. Carrega em «+ Adicionar» e junta o ficheiro do livro (EPUB ou PDF)."}</p>`);
+  el.appendChild(est);
+  est.onclick = (e) => { const b = e.target.closest(".livro"); if (b) abrirLivro(livros.find((x) => x.id === b.dataset.id)); };
+  if (!CRIANCA()) await seccao(el, COLS.livros, { titulo: "Gerir livros" });
+}
+function ficheiroLivro(l) {
+  const a = (l.anexos || []).find((x) => /\.epub$/i.test(x.nome || "") || x.tipo === "application/epub+zip") || (l.anexos || []).find((x) => /\.pdf$/i.test(x.nome || "") || x.tipo === "application/pdf");
+  return a ? { ...a, tipoLivro: /\.pdf$/i.test(a.nome || "") || a.tipo === "application/pdf" ? "pdf" : "epub" } : null;
+}
+async function abrirLivro(l) {
+  const f = l && ficheiroLivro(l); if (!f) return;
+  let url;
+  try { const r = await sb.storage.from("anexos").createSignedUrl(f.caminho, 3600); if (r.error) throw r.error; url = r.data.signedUrl; }
+  catch (e) { return erro(e); }
+  if (f.tipoLivro === "pdf") { window.open(url, "_blank"); try { localStorage.setItem("casa-livro-" + l.id, JSON.stringify({ pct: 1 })); } catch (e) {} return; }
+  // leitor de EPUB (epub.js), em ecrã inteiro
+  const ov = document.createElement("div");
+  ov.className = "leitor"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-label", "A ler: " + (l.titulo || "livro"));
+  ov.innerHTML = `<header><button type="button" data-a="fechar" aria-label="Fechar o livro">✕</button><b>${esc(l.titulo || "")}</b>
+      <button type="button" data-a="menos" aria-label="Letra mais pequena">A−</button><button type="button" data-a="mais" aria-label="Letra maior">A+</button></header>
+    <div class="lt-pag"><p class="lt-msg">A abrir o livro…</p></div>
+    <button type="button" class="lt-zona esq" data-a="ant" aria-label="Página anterior"></button><button type="button" class="lt-zona dir" data-a="seg" aria-label="Página seguinte"></button>
+    <footer><button type="button" data-a="ant">‹ Anterior</button><span class="lt-pct"></span><button type="button" data-a="seg">Seguinte ›</button></footer>`;
+  document.body.appendChild(ov); document.body.classList.add("a-ler");
+  const chave = "casa-livro-" + l.id;
+  let estado = {}; try { estado = JSON.parse(localStorage.getItem(chave) || "{}"); } catch (e) {}
+  let letra = estado.letra || 110, rend = null;
+  const fechar = () => { ov.remove(); document.body.classList.remove("a-ler"); document.removeEventListener("keydown", teclas); render(); };
+  const teclas = (e) => { if (!rend) return; if (e.key === "ArrowRight") rend.next(); else if (e.key === "ArrowLeft") rend.prev(); else if (e.key === "Escape") fechar(); };
+  document.addEventListener("keydown", teclas);
+  ov.onclick = (e) => { const b = e.target.closest("[data-a]"); if (!b) return; const a = b.dataset.a;
+    if (a === "fechar") return fechar();
+    if (!rend) return;
+    if (a === "seg") rend.next(); else if (a === "ant") rend.prev();
+    else { letra = Math.max(80, Math.min(180, letra + (a === "mais" ? 10 : -10))); rend.themes.fontSize(letra + "%"); estado.letra = letra; try { localStorage.setItem(chave, JSON.stringify(estado)); } catch (err) {} } };
+  try {
+    if (!window.JSZip) await carregarScript("https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js");
+    if (!window.ePub) await carregarScript("https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js");
+    const buf = await (await fetch(url)).arrayBuffer();
+    const livro = window.ePub(buf);
+    const pag = $(".lt-pag", ov); pag.innerHTML = "";
+    rend = livro.renderTo(pag, { width: "100%", height: "100%", flow: "paginated", spread: "none", allowScriptedContent: false });
+    rend.themes.default({ body: { color: "#EEF2F9 !important", background: "#0E1626 !important", "line-height": "1.6 !important", padding: "0 6px !important" }, a: { color: "#4C9BFF !important" }, img: { "max-width": "100% !important" } });
+    rend.themes.fontSize(letra + "%");
+    await rend.display(estado.cfi || undefined);
+    // deslizar o dedo para mudar de página
+    let x0 = null;
+    rend.on("touchstart", (ev) => { x0 = ev.changedTouches[0].screenX; });
+    rend.on("touchend", (ev) => { if (x0 == null) return; const dx = ev.changedTouches[0].screenX - x0; if (Math.abs(dx) > 50) dx < 0 ? rend.next() : rend.prev(); x0 = null; });
+    rend.on("keyup", teclas);
+    livro.ready.then(() => livro.locations.generate(1200)).then(() => { const loc = rend.currentLocation(); if (loc && loc.start) mostrarPct(loc.start.cfi); }).catch(() => {});
+    const mostrarPct = (cfi) => { try { const p = livro.locations.length() ? Math.round(livro.locations.percentageFromCfi(cfi) * 100) : 0; $(".lt-pct", ov).textContent = p ? p + "%" : ""; estado.pct = p || estado.pct || 1; } catch (e) {} };
+    rend.on("relocated", (loc) => { estado.cfi = loc.start.cfi; mostrarPct(loc.start.cfi); try { localStorage.setItem(chave, JSON.stringify(estado)); } catch (e) {} });
+  } catch (e) {
+    $(".lt-pag", ov).innerHTML = `<p class="lt-msg">Não consegui abrir este livro (${esc(e.message || String(e))}).</p>`;
+  }
 }
 
 /* ---------- instalar a app no Android (Chrome, Samsung Internet, Edge…) ---------- */
