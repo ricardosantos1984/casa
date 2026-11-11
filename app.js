@@ -2906,7 +2906,7 @@ function jogoGalo(el) {
     if (nivel === "medio") { for (const j of ["O", "X"]) for (const i of livres) { const t = [...b]; t[i] = j; if (vencedor(t) && vencedor(t).j === j) return i; } if (!b[4]) return 4; return sorteia(livres); }
     return minimax([...b], "O").i;
   };
-  let b = Array(9).fill(""), vez = "X", fim = false, comeca = "X";
+  let b = Array(9).fill(""), vez = "X", fim = false, comeca = "X", tBot = 0;
   const guardar = () => { try { localStorage.setItem("casa-galo", JSON.stringify({ modo, nivel, pts })); } catch (e) {} };
   el.innerHTML = cab("Jogo do galo", "Faz três em linha antes do outro jogador!");
   el.insertAdjacentHTML("beforeend", `<section class="seccao galo">
@@ -2920,7 +2920,7 @@ function jogoGalo(el) {
   const box = $(".galo", el), tab = $(".galo-tab", box), msg = $(".j-msg", box);
   const nomes = () => (modo === "bot" ? { X: "Tu (✖)", O: "Computador (◯)" } : { X: "Jogador ✖", O: "Jogador ◯" });
   const mostrar = (v) => {
-    [...tab.children].forEach((c, i) => { c.textContent = b[i] === "X" ? "✖" : b[i] === "O" ? "◯" : ""; c.className = b[i] ? "j" + b[i] : ""; c.disabled = !!b[i] || fim; });
+    [...tab.children].forEach((c, i) => { c.textContent = b[i] === "X" ? "✖" : b[i] === "O" ? "◯" : "\u00a0"; c.className = b[i] ? "j" + b[i] : ""; c.disabled = !!b[i] || fim; });
     if (v && v.l) v.l.forEach((i) => tab.children[i].classList.add("linha"));
     const n = nomes();
     $(".galo-pts", box).innerHTML = `<span class="pX">${n.X}: <b>${pts.X}</b></span><span>Empates: <b>${pts.E}</b></span><span class="pO">${n.O}: <b>${pts.O}</b></span>`;
@@ -2931,9 +2931,9 @@ function jogoGalo(el) {
     b[i] = vez; const v = vencedor(b);
     if (v) { fim = true; pts[v.j]++; guardar(); return mostrar(v); }
     vez = vez === "X" ? "O" : "X"; mostrar();
-    if (modo === "bot" && vez === "O") setTimeout(() => jogar(jogadaBot(b)), 450);
+    if (modo === "bot" && vez === "O") tBot = setTimeout(() => jogar(jogadaBot(b)), 450);
   };
-  const novo = () => { b = Array(9).fill(""); fim = false; comeca = comeca === "X" ? "O" : "X"; vez = comeca; mostrar(); if (modo === "bot" && vez === "O") setTimeout(() => jogar(jogadaBot(b)), 450); };
+  const novo = () => { clearTimeout(tBot); b = Array(9).fill(""); fim = false; comeca = comeca === "X" ? "O" : "X"; vez = comeca; mostrar(); if (modo === "bot" && vez === "O") tBot = setTimeout(() => jogar(jogadaBot(b)), 450); };
   tab.onclick = (e) => { const c = e.target.closest("button"); if (!c || (modo === "bot" && vez === "O")) return; jogar(+c.dataset.i); };
   $(".j-novo", box).onclick = novo;
   $(".j-zero", box).onclick = () => { pts = { X: 0, O: 0, E: 0 }; guardar(); mostrar(vencedor(b)); };

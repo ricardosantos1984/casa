@@ -560,7 +560,7 @@ body.a-ler{overflow:hidden}
 .j-msg{min-height:1.4em;font-weight:700;text-align:center;font-size:18px}
 /* sopa de letras */
 .sopa-grelha{display:grid;width:100%;box-sizing:border-box;grid-template-columns:repeat(var(--n),1fr);gap:2px;max-width:520px;margin:0 auto;touch-action:none;user-select:none;-webkit-user-select:none;background:var(--linha);padding:2px;border-radius:12px}
-.sopa-grelha span{aspect-ratio:1;display:grid;place-items:center;background:var(--painel);font-weight:800;font-size:clamp(12px,4.2vw,22px);border-radius:4px;cursor:pointer}
+.sopa-grelha span{aspect-ratio:1;min-height:24px;display:grid;place-items:center;background:var(--painel);font-weight:800;font-size:clamp(12px,4.2vw,22px);border-radius:4px;cursor:pointer}
 .sopa-grelha span.ok{background:#2E7D32;color:#fff}
 .sopa-grelha span.sel{background:var(--acento);color:var(--acento-txt)}
 .sopa-lista{display:flex;flex-wrap:wrap;gap:6px 12px;justify-content:center;margin-top:12px;font-weight:700;letter-spacing:.04em}
@@ -568,8 +568,8 @@ body.a-ler{overflow:hidden}
 /* jogo do galo */
 .galo-pts{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px;color:var(--suave);margin-bottom:10px}
 .galo-pts .pX b{color:var(--acento)}.galo-pts .pO b{color:var(--laranja)}
-.galo-tab{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:340px;margin:0 auto}
-.galo-tab button{aspect-ratio:1;border-radius:16px;border:1px solid var(--linha);background:var(--painel2);font-size:clamp(40px,14vw,64px);font-weight:800;padding:0;line-height:1}
+.galo-tab{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:min(340px,100%);margin:0 auto}
+.galo-tab button{aspect-ratio:1;height:min(26vw,104px);min-height:72px;display:flex;align-items:center;justify-content:center;border-radius:16px;border:1px solid var(--linha);background:var(--painel2);font-size:clamp(40px,14vw,64px);font-weight:800;padding:0;line-height:1}
 .galo-tab button.jX{color:var(--acento)}.galo-tab button.jO{color:var(--laranja)}
 .galo-tab button.linha{background:var(--acento-f);border-color:var(--acento)}
 .galo .acoes{justify-content:center}
