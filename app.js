@@ -2609,7 +2609,9 @@ const FORMAS_DESENHO = [
   ["tri", "Triângulo", '<path d="M12 4l8 16H4z" fill="none"/>'],
   ["estrela", "Estrela", '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="none"/>'],
   ["coracao", "Coração", '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="none"/>'],
+  ["texto", "Escrever texto", '<path d="M5 7V4h14v3M12 4v16M9 20h6" fill="none"/>'],
 ];
+const FONTES_DESENHO = [["Normal", "700 {t}px system-ui, Roboto, Arial, sans-serif"], ["Divertida", "700 {t}px 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive"], ["Escrita à mão", "400 {t}px 'Segoe Script', 'Bradley Hand', 'Dancing Script', cursive"], ["Clássica", "700 {t}px Georgia, 'Times New Roman', serif"], ["Máquina", "700 {t}px 'Courier New', monospace"]];
 async function vDesenhos(el) {
   el.innerHTML = cab("Desenhos", "Desenha com o dedo. Quando gostares do desenho, guarda-o na galeria do telemóvel.");
   const box = document.createElement("section");
@@ -2627,6 +2629,7 @@ async function vDesenhos(el) {
       </div>
       <div class="ds-formas" role="group" aria-label="Formas">${FORMAS_DESENHO.map(([f, nome, ico], i) => `<button type="button" class="ds-f${i === 0 ? " on" : ""}" data-f="${f}" title="${nome}" aria-label="${nome}"><svg viewBox="0 0 24 24" aria-hidden="true">${ico}</svg></button>`).join("")}
         <button type="button" class="ds-f ds-cheia" data-a2="cheia" aria-pressed="false" title="Formas cheias ou só o contorno" aria-label="Formas cheias"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
+        <select class="ds-fonte" hidden aria-label="Tipo de letra">${FONTES_DESENHO.map(([n], i) => `<option value="${i}">${n}</option>`).join("")}</select>
         <label class="ds-f ds-abrir" title="Abrir uma foto ou desenho da galeria" aria-label="Abrir foto ou desenho da galeria">📷<input type="file" accept="image/*" hidden></label>
       </div>
     </div>
@@ -2639,8 +2642,9 @@ async function vDesenhos(el) {
   let cor = CORES_DESENHO[0], tam = 10, tamB = 30, borracha = false, balde = false, fundo = "#FFFFFF", forma = "livre", cheia = false, snap = null, ini = null;
   const historico = [];
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let alturaBase = window.innerHeight, largura = 0;
   function tamanhoFolha() {
-    const w = papel.clientWidth, h = Math.round(Math.min(Math.max(w * 1.3, 320), window.innerHeight * 0.62));
+    const w = papel.clientWidth, h = Math.round(Math.min(Math.max(w * 1.3, 320), alturaBase * 0.62)); largura = w;
     return [w, h];
   }
   function preparar(imagem) {
@@ -2666,7 +2670,9 @@ async function vDesenhos(el) {
     ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
   };
   cv.addEventListener("pointerdown", (e) => {
-    e.preventDefault(); cv.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    if (forma === "texto" && !borracha && !balde) { const r = cv.getBoundingClientRect(); abrirTexto(e.clientX - r.left, e.clientY - r.top); return; }
+    cv.setPointerCapture(e.pointerId);
     guardarPasso();
     if (balde) { pintarFundo(borracha ? "#FFFFFF" : cor); balde = false; ferr("balde", false); return; }
     aDesenhar = true; ult = ponto(e);
@@ -2679,6 +2685,35 @@ async function vDesenhos(el) {
     const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; for (const ev of evs) { const p = ponto(ev); traco(ult, p); ult = p; }
   });
   const fim = () => { if (aDesenhar) { aDesenhar = false; snap = null; guardarLocal(); } };
+  // texto: toca na folha onde queres escrever, escreve e carrega em ✓ (ou Enter)
+  let caixa = null;
+  const tamLetra = () => ({ 4: 18, 10: 28, 20: 42, 36: 64 })[tam] || 28;
+  const fonte = (px) => FONTES_DESENHO[+$(".ds-fonte", box).value || 0][1].replace("{t}", px);
+  function fecharTexto(gravar) {
+    if (!caixa) return;
+    const { wrap, inp, x, y, px } = caixa; caixa = null;
+    const t = inp.value.trim(); wrap.remove();
+    if (!gravar || !t) return;
+    guardarPasso();
+    ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = cor; ctx.textBaseline = "middle"; ctx.font = fonte(px * dpr);
+    t.split(/\n/).forEach((l, i) => ctx.fillText(l, x * dpr, (y + i * px * 1.2) * dpr));
+    guardarLocal();
+  }
+  function abrirTexto(x, y) {
+    fecharTexto(true);
+    const px = tamLetra();
+    const wrap = document.createElement("div"); wrap.className = "ds-txt";
+    wrap.style.left = Math.max(0, Math.min(x, papel.clientWidth - 140)) + "px"; wrap.style.top = Math.max(0, y - px * 0.75) + "px";
+    wrap.innerHTML = `<input type="text" enterkeyhint="done" maxlength="120" placeholder="Escreve aqui…" aria-label="Texto para o desenho"><button type="button" class="ok" aria-label="Pôr o texto no desenho">✓</button><button type="button" class="nao" aria-label="Cancelar o texto">✕</button>`;
+    const inp = $("input", wrap);
+    inp.style.font = fonte(px); inp.style.color = cor; inp.style.height = Math.round(px * 1.5) + "px";
+    papel.appendChild(wrap);
+    caixa = { wrap, inp, x: Math.max(0, Math.min(x, papel.clientWidth - 140)) + 6, y, px };
+    inp.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); fecharTexto(true); } else if (ev.key === "Escape") fecharTexto(false); });
+    $(".ok", wrap).onpointerdown = (ev) => { ev.preventDefault(); fecharTexto(true); };
+    $(".nao", wrap).onpointerdown = (ev) => { ev.preventDefault(); fecharTexto(false); };
+    setTimeout(() => inp.focus(), 30);
+  }
   // formas geométricas: arrasta o dedo de um canto ao outro
   function desenharForma(a, b) {
     const [x0, y0] = a, [x1, y1] = b, L = Math.min(x0, x1), T = Math.min(y0, y1), W = Math.abs(x1 - x0), H = Math.abs(y1 - y0), cx = L + W / 2, cy = T + H / 2;
@@ -2709,7 +2744,7 @@ async function vDesenhos(el) {
   box.querySelectorAll(".ds-t[data-tb]").forEach((b) => b.onclick = () => { tamB = +b.dataset.tb; marcar(".ds-t[data-tb]", b); });
   // com a borracha ligada, os tamanhos passam a ser os da borracha
   const modoBorracha = () => { $(".ds-tam:not(.ds-tamb)", box).hidden = borracha; $(".ds-tamb", box).hidden = !borracha; };
-  box.querySelectorAll(".ds-f[data-f]").forEach((b) => b.onclick = () => { forma = b.dataset.f; marcar(".ds-f[data-f]", b); borracha = false; balde = false; ferr("borracha", false); ferr("balde", false); modoBorracha(); });
+  box.querySelectorAll(".ds-f[data-f]").forEach((b) => b.onclick = () => { fecharTexto(true); forma = b.dataset.f; $(".ds-fonte", box).hidden = forma !== "texto"; marcar(".ds-f[data-f]", b); borracha = false; balde = false; ferr("borracha", false); ferr("balde", false); modoBorracha(); });
   $(".ds-cheia", box).onclick = (e) => { cheia = !cheia; e.currentTarget.classList.toggle("on", cheia); e.currentTarget.setAttribute("aria-pressed", cheia); };
   // abrir uma foto ou um desenho da galeria: fica na folha (inteira, ao centro) e pode-se desenhar por cima
   $(".ds-abrir input", box).onchange = (e) => {
@@ -2737,6 +2772,7 @@ async function vDesenhos(el) {
   };
   $(".ds-acoes", box).onclick = async (e) => {
     const b = e.target.closest("[data-a]"); if (!b) return;
+    fecharTexto(true);
     const f = await ficheiro();
     if (b.dataset.a === "partilhar" && navigator.canShare && navigator.canShare({ files: [f] })) {
       try { await navigator.share({ files: [f], title: "O meu desenho" }); } catch (err) {}
@@ -2749,7 +2785,7 @@ async function vDesenhos(el) {
     aviso("Desenho guardado! 🎨 Está na galeria, no álbum Transferências (Download).");
   };
   // se o ecrã rodar ou mudar de tamanho, mantém o desenho
-  let tRes = 0; const aoRedim = () => { clearTimeout(tRes); tRes = setTimeout(() => { if (!document.body.contains(cv)) return window.removeEventListener("resize", aoRedim); const im = new Image(); im.onload = () => preparar(im); im.src = cv.toDataURL(); }, 250); };
+  let tRes = 0; const aoRedim = () => { clearTimeout(tRes); tRes = setTimeout(() => { if (!document.body.contains(cv)) return window.removeEventListener("resize", aoRedim); if (papel.clientWidth === largura) return; /* o teclado a abrir não muda a folha */ alturaBase = window.innerHeight; const im = new Image(); im.onload = () => preparar(im); im.src = cv.toDataURL(); }, 250); };
   window.addEventListener("resize", aoRedim);
 }
 
