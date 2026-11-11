@@ -546,3 +546,47 @@ body.a-ler{overflow:hidden}
 .ds-txt .ok{background:var(--acento);color:var(--acento-txt)}
 .ds-txt .nao{background:var(--painel2);color:var(--texto)}
 .ds-fonte{width:auto;flex:none;min-height:0;height:42px;border-radius:12px;border:1px solid var(--linha);background:var(--painel2);color:var(--texto);padding:0 8px;font:inherit;font-size:15px}
+
+/* ---------- Jogos ---------- */
+.jogos-menu{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.jogo-tile{display:flex;flex-direction:column;gap:4px;padding:18px;border-radius:var(--raio-g);background:var(--painel2);border:1px solid var(--linha);color:var(--texto);text-decoration:none}
+.jogo-tile:active{transform:scale(.98)}
+.jt-ico{font-size:38px;line-height:1}
+.jogo-tile b{font-size:18px;margin-top:6px}
+.jogo-tile small{color:var(--suave);font-size:14px}
+.jogo-topo{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px}
+.jogo-topo select{width:auto;min-height:40px;padding:0 10px;border-radius:12px;border:1px solid var(--linha);background:var(--painel2);color:var(--texto);font:inherit;font-size:15px}
+.voltar-jogos{text-decoration:none;display:inline-flex;align-items:center}
+.j-msg{min-height:1.4em;font-weight:700;text-align:center;font-size:18px}
+/* sopa de letras */
+.sopa-grelha{display:grid;width:100%;box-sizing:border-box;grid-template-columns:repeat(var(--n),1fr);gap:2px;max-width:520px;margin:0 auto;touch-action:none;user-select:none;-webkit-user-select:none;background:var(--linha);padding:2px;border-radius:12px}
+.sopa-grelha span{aspect-ratio:1;display:grid;place-items:center;background:var(--painel);font-weight:800;font-size:clamp(12px,4.2vw,22px);border-radius:4px;cursor:pointer}
+.sopa-grelha span.ok{background:#2E7D32;color:#fff}
+.sopa-grelha span.sel{background:var(--acento);color:var(--acento-txt)}
+.sopa-lista{display:flex;flex-wrap:wrap;gap:6px 12px;justify-content:center;margin-top:12px;font-weight:700;letter-spacing:.04em}
+.sopa-lista span.ok{text-decoration:line-through;color:var(--fraco)}
+/* jogo do galo */
+.galo-pts{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px;color:var(--suave);margin-bottom:10px}
+.galo-pts .pX b{color:var(--acento)}.galo-pts .pO b{color:var(--laranja)}
+.galo-tab{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:340px;margin:0 auto}
+.galo-tab button{aspect-ratio:1;border-radius:16px;border:1px solid var(--linha);background:var(--painel2);font-size:clamp(40px,14vw,64px);font-weight:800;padding:0;line-height:1}
+.galo-tab button.jX{color:var(--acento)}.galo-tab button.jO{color:var(--laranja)}
+.galo-tab button.linha{background:var(--acento-f);border-color:var(--acento)}
+.galo .acoes{justify-content:center}
+/* forca */
+.forca-seg{display:flex;gap:6px}.forca-seg input{flex:1;text-transform:uppercase}
+.forca-svg{display:block;width:min(220px,60vw);margin:0 auto;stroke:var(--texto);stroke-width:5;stroke-linecap:round;fill:none}
+.forca-svg .p{opacity:0;stroke:var(--laranja);transition:opacity .3s}.forca-svg .p.on{opacity:1}
+.forca-dica{text-align:center;color:var(--suave);margin:4px 0}
+.forca-palavra{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:14px 0 6px}
+.forca-palavra span{width:30px;height:40px;border-bottom:3px solid var(--texto);display:grid;place-items:end center;font-size:26px;font-weight:800;padding-bottom:2px}
+.forca-palavra span.esp{border-bottom:none;width:14px}
+.forca-palavra span.falhou{color:var(--vermelho)}
+.forca-erros{text-align:center;color:var(--suave);font-size:14px}
+.forca-teclado{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;max-width:440px;margin:10px auto}
+.forca-teclado button{min-height:44px;border-radius:10px;border:1px solid var(--linha);background:var(--painel2);font-weight:800;font-size:18px;padding:0}
+.forca-teclado button.certa{background:#2E7D32;color:#fff;border-color:#2E7D32}
+.forca-teclado button.errada{background:var(--vermelho-f);color:var(--fraco)}
+.forca-teclado button:disabled{cursor:default}
+.forca .acoes{justify-content:center}
+.ganhou .j-msg{color:#7CDB8A}

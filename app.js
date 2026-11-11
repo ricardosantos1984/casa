@@ -1939,6 +1939,7 @@ async function exportarExcel() {
 
 /* ---------- menu (ícones) ---------- */
 const ICO = {
+  jogos: '<rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7 10.5v4M5 12.5h4"/><circle cx="15.5" cy="11.5" r="1"/><circle cx="17.5" cy="13.5" r="1"/>',
   desenhos: '<path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.8 1.6-1.6 0-.5-.2-.8-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.7-1.6 1.6-1.6H16a5 5 0 0 0 5-5C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7.3" r="1.2"/><circle cx="15" cy="7.3" r="1.2"/>',
   livros: '<path d="M4 5a2 2 0 0 1 2-2h5v17H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-5v17h5a2 2 0 0 1 2 2z"/>',
   kit: '<rect x="3.5" y="7" width="17" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M12 10.5v6M9 13.5h6"/>',
@@ -1980,7 +1981,7 @@ const ICO = {
   euro: '<circle cx="12" cy="12" r="8.5"/><path d="M15 8.8a4 4 0 1 0 0 6.4M7.5 11h6M7.5 13.5h6"/>',
   mais: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
 };
-const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["escola", "Escola Ema"], ["estudo", "Estudo"], ["viagens", "Viagens"], ["ferias", "Férias e aniversários"], ["medicos", "Médicos"], ["tarefas", "Tarefas e mesada"], ["despensa", "Despensa"], ["contactos", "Contactos úteis"], ["contadores", "Contadores"], ["emergencia", "Kit de emergência"], ["desenhos", "Desenhos"], ["livros", "Livros"], ["dados", "Gerir dados"]];
+const SECOES = [["inicio", "Início"], ["ementas", "Ementas"], ["compras", "Compras"], ["despesas", "Despesas"], ["veiculos", "Veículos"], ["casa", "Casa"], ["familia", "Família"], ["escola", "Escola Ema"], ["estudo", "Estudo"], ["viagens", "Viagens"], ["ferias", "Férias e aniversários"], ["medicos", "Médicos"], ["tarefas", "Tarefas e mesada"], ["despensa", "Despensa"], ["contactos", "Contactos úteis"], ["contadores", "Contadores"], ["emergencia", "Kit de emergência"], ["jogos", "Jogos"], ["desenhos", "Desenhos"], ["livros", "Livros"], ["dados", "Gerir dados"]];
 const svg = (k) => `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]}</svg>`;
 let NA_BARRA = ["inicio", "ementas", "compras", "despesas"];
 // secções que quem entrou pode ver (as crianças só veem as escolhidas pelos pais)
@@ -2324,8 +2325,8 @@ function alertasContadores(leituras) {
    ===================================================================== */
 const campoData = (col) => (col.campos.find((c) => c.t === "date") || {}).k;
 /* ---------- acessos das crianças (só os pais veem; regras em acessos.sql) ---------- */
-const SECOES_CRIANCA = ["desenhos", "livros", "ementas", "compras", "escola", "estudo", "tarefas", "ferias", "familia", "viagens", "contactos", "despensa", "casa", "medicos", "despesas", "veiculos", "contadores"];
-const NOTA_SEC = { desenhos: "bloco de desenho", livros: "ler os livros", ementas: "só ver", compras: "ver e acrescentar", estudo: "fazer fichas", tarefas: "marcar as tarefas feitas", despesas: "inclui o orçamento", medicos: "inclui saúde de todos" };
+const SECOES_CRIANCA = ["jogos", "desenhos", "livros", "ementas", "compras", "escola", "estudo", "tarefas", "ferias", "familia", "viagens", "contactos", "despensa", "casa", "medicos", "despesas", "veiculos", "contadores"];
+const NOTA_SEC = { jogos: "sopa de letras, galo e forca", desenhos: "bloco de desenho", livros: "ler os livros", ementas: "só ver", compras: "ver e acrescentar", estudo: "fazer fichas", tarefas: "marcar as tarefas feitas", despesas: "inclui o orçamento", medicos: "inclui saúde de todos" };
 async function cartaoAcessos(el) {
   if (!sb || CRIANCA()) return;
   const { data, error } = await sb.from("membros").select("email,nome,papel,secoes").eq("papel", "crianca");
@@ -2458,7 +2459,7 @@ async function apagarVarios(itens) {
 /* =====================================================================
    NAVEGAÇÃO
    ===================================================================== */
-const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, estudo: vEstudo, viagens: vViagens, ferias: vFerias, medicos: vMedicos, tarefas: vTarefas, despensa: vDespensa, contactos: vContactos, contadores: vContadores, emergencia: vEmergencia, desenhos: vDesenhos, livros: vLivros, dados: vDados };
+const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, estudo: vEstudo, viagens: vViagens, ferias: vFerias, medicos: vMedicos, tarefas: vTarefas, despensa: vDespensa, contactos: vContactos, contadores: vContadores, emergencia: vEmergencia, jogos: vJogos, desenhos: vDesenhos, livros: vLivros, dados: vDados };
 let ROTA_ARGS = [];
 async function render() {
   if (!store) return;
@@ -2787,6 +2788,227 @@ async function vDesenhos(el) {
   // se o ecrã rodar ou mudar de tamanho, mantém o desenho
   let tRes = 0; const aoRedim = () => { clearTimeout(tRes); tRes = setTimeout(() => { if (!document.body.contains(cv)) return window.removeEventListener("resize", aoRedim); if (papel.clientWidth === largura) return; /* o teclado a abrir não muda a folha */ alturaBase = window.innerHeight; const im = new Image(); im.onload = () => preparar(im); im.src = cv.toDataURL(); }, 250); };
   window.addEventListener("resize", aoRedim);
+}
+
+/* ---------- Jogos: sopa de letras, jogo do galo e forca ---------- */
+const semAcento = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "");
+const sorteia = (a) => a[Math.floor(Math.random() * a.length)];
+const baralha = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const TEMAS_SOPA = {
+  "Animais": ["GATO", "CAO", "LEAO", "TIGRE", "ZEBRA", "GIRAFA", "COELHO", "TARTARUGA", "GOLFINHO", "PINGUIM", "CAVALO", "RAPOSA", "MOCHO", "ELEFANTE", "CANGURU"],
+  "Frutas": ["MACA", "PERA", "BANANA", "LARANJA", "UVA", "MORANGO", "KIWI", "MELANCIA", "ANANAS", "CEREJA", "LIMAO", "MANGA", "AMEIXA", "FIGO", "MELAO"],
+  "Escola": ["LAPIS", "CADERNO", "BORRACHA", "MOCHILA", "LIVRO", "REGUA", "ESTOJO", "QUADRO", "RECREIO", "PROFESSORA", "AULA", "TESOURA", "COLA", "MAPA", "TESTE"],
+  "Cores": ["AZUL", "VERDE", "AMARELO", "VERMELHO", "ROSA", "ROXO", "LARANJA", "BRANCO", "PRETO", "CINZENTO", "CASTANHO", "DOURADO", "PRATEADO", "LILAS", "BEGE"],
+  "Desporto": ["FUTEBOL", "FUTSAL", "TENIS", "GOLO", "BOLA", "NATACAO", "CORRIDA", "GINASTICA", "BASQUETE", "ARBITRO", "EQUIPA", "BALIZA", "MEDALHA", "VOLEIBOL", "SKATE"],
+  "Casa": ["SOFA", "CAMA", "MESA", "CADEIRA", "COZINHA", "JANELA", "PORTA", "ESPELHO", "TAPETE", "LAMPADA", "ALMOFADA", "ESTANTE", "VARANDA", "CHAVE", "TELHADO"],
+};
+const PALAVRAS_FORCA = [["ELEFANTE", "Animal"], ["BORBOLETA", "Animal"], ["CROCODILO", "Animal"], ["CHOCOLATE", "Comida"], ["PIZZA", "Comida"], ["MORANGO", "Fruta"], ["BICICLETA", "Transporte"], ["AVIÃO", "Transporte"], ["GUITARRA", "Instrumento"], ["ARCO-ÍRIS", "No céu"], ["ESTRELA", "No céu"], ["CASTELO", "Edifício"], ["TOMAR", "Cidade"], ["ESCOLA", "Lugar"], ["PRAIA", "Lugar"], ["COMPUTADOR", "Tecnologia"], ["TELEMÓVEL", "Tecnologia"], ["BOLACHA", "Comida"], ["DINOSSAURO", "Animal"], ["UNICÓRNIO", "Fantasia"], ["SEREIA", "Fantasia"], ["FUTEBOL", "Desporto"], ["PIJAMA", "Roupa"], ["GUARDA-CHUVA", "Objeto"]];
+
+async function vJogos(el) {
+  const jogo = ROTA_ARGS[0] || "";
+  if (jogo === "sopa") return jogoSopa(el);
+  if (jogo === "galo") return jogoGalo(el);
+  if (jogo === "forca") return jogoForca(el);
+  el.innerHTML = cab("Jogos", "Escolhe um jogo. Diverte-te! 🎮");
+  el.insertAdjacentHTML("beforeend", `<section class="seccao jogos-menu">
+    <a class="jogo-tile" href="#jogos/sopa"><span class="jt-ico">🔤</span><b>Sopa de letras</b><small>Encontra as palavras escondidas</small></a>
+    <a class="jogo-tile" href="#jogos/galo"><span class="jt-ico">⭕</span><b>Jogo do galo</b><small>A dois ou contra o computador</small></a>
+    <a class="jogo-tile" href="#jogos/forca"><span class="jt-ico">🪢</span><b>Jogo da forca</b><small>Um escolhe a palavra, o outro adivinha</small></a>
+  </section>`);
+}
+const voltarJogos = `<a class="sec peq voltar-jogos" href="#jogos">‹ Jogos</a>`;
+
+/* --- Sopa de letras --- */
+function jogoSopa(el) {
+  let tema = Object.keys(TEMAS_SOPA)[0], nivel = "facil";
+  try { const g = JSON.parse(localStorage.getItem("casa-sopa") || "{}"); if (TEMAS_SOPA[g.tema]) tema = g.tema; if (g.nivel) nivel = g.nivel; } catch (e) {}
+  const novo = () => {
+    try { localStorage.setItem("casa-sopa", JSON.stringify({ tema, nivel })); } catch (e) {}
+    const N = nivel === "facil" ? 9 : nivel === "medio" ? 11 : 13, quantas = nivel === "facil" ? 6 : nivel === "medio" ? 8 : 10;
+    const dirs = nivel === "facil" ? [[0, 1], [1, 0]] : nivel === "medio" ? [[0, 1], [1, 0], [1, 1], [-1, 1]] : [[0, 1], [1, 0], [1, 1], [-1, 1], [0, -1], [-1, 0], [-1, -1], [1, -1]];
+    const g = Array.from({ length: N }, () => Array(N).fill(""));
+    const postas = [];
+    for (const w of baralha(TEMAS_SOPA[tema].filter((w) => w.length <= N))) {
+      if (postas.length >= quantas) break;
+      for (let t = 0; t < 300; t++) {
+        const [dr, dc] = sorteia(dirs), r = Math.floor(Math.random() * N), c = Math.floor(Math.random() * N);
+        const er = r + dr * (w.length - 1), ec = c + dc * (w.length - 1);
+        if (er < 0 || er >= N || ec < 0 || ec >= N) continue;
+        let ok = true; for (let i = 0; i < w.length; i++) { const x = g[r + dr * i][c + dc * i]; if (x && x !== w[i]) { ok = false; break; } }
+        if (!ok) continue;
+        for (let i = 0; i < w.length; i++) g[r + dr * i][c + dc * i] = w[i];
+        postas.push({ w, r, c, dr, dc, achada: false }); break;
+      }
+    }
+    const ABC = "AAABCDEEEFGHIIJLMNOOOPQRRSSTUUVXZ";
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (!g[r][c]) g[r][c] = sorteia(ABC);
+    desenhar(g, N, postas.sort((a, b) => a.w.localeCompare(b.w)));
+  };
+  function desenhar(g, N, postas) {
+    el.innerHTML = cab("Sopa de letras", "Arrasta o dedo da primeira à última letra de cada palavra.");
+    el.insertAdjacentHTML("beforeend", `<section class="seccao sopa">
+      <div class="jogo-topo">${voltarJogos}
+        <select class="j-tema" aria-label="Tema">${Object.keys(TEMAS_SOPA).map((t) => `<option ${t === tema ? "selected" : ""}>${t}</option>`).join("")}</select>
+        <select class="j-nivel" aria-label="Nível"><option value="facil" ${nivel === "facil" ? "selected" : ""}>Fácil</option><option value="medio" ${nivel === "medio" ? "selected" : ""}>Médio</option><option value="dificil" ${nivel === "dificil" ? "selected" : ""}>Difícil</option></select>
+        <button type="button" class="sec peq j-novo">🔄 Nova</button></div>
+      <div class="sopa-grelha" style="--n:${N}">${g.map((l, r) => l.map((x, c) => `<span data-r="${r}" data-c="${c}">${x}</span>`).join("")).join("")}</div>
+      <div class="sopa-lista">${postas.map((p, i) => `<span data-i="${i}">${p.w}</span>`).join("")}</div>
+      <p class="j-msg" aria-live="polite"></p></section>`);
+    const box = $(".sopa", el), grelha = $(".sopa-grelha", box), msg = $(".j-msg", box);
+    $(".j-tema", box).onchange = (e) => { tema = e.target.value; novo(); };
+    $(".j-nivel", box).onchange = (e) => { nivel = e.target.value; novo(); };
+    $(".j-novo", box).onclick = novo;
+    const cel = (r, c) => grelha.children[r * N + c];
+    let ini = null, sel = [];
+    const limpar = () => { sel.forEach((s) => s.classList.remove("sel")); sel = []; };
+    const daPonto = (e) => { const t = document.elementFromPoint(e.clientX, e.clientY); return t && t.parentNode === grelha ? [+t.dataset.r, +t.dataset.c] : null; };
+    const linha = (a, b) => {
+      const dr = Math.sign(b[0] - a[0]), dc = Math.sign(b[1] - a[1]), n = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]));
+      if (!(a[0] === b[0] || a[1] === b[1] || Math.abs(b[0] - a[0]) === Math.abs(b[1] - a[1]))) return null;
+      return Array.from({ length: n + 1 }, (_, i) => [a[0] + dr * i, a[1] + dc * i]);
+    };
+    grelha.onpointerdown = (e) => { const p = daPonto(e); if (!p) return; e.preventDefault(); grelha.setPointerCapture(e.pointerId); ini = p; limpar(); sel = [cel(...p)]; sel[0].classList.add("sel"); };
+    grelha.onpointermove = (e) => { if (!ini) return; const p = daPonto(e); if (!p) return; const l = linha(ini, p); if (!l) return; limpar(); sel = l.map((x) => cel(...x)); sel.forEach((s) => s.classList.add("sel")); };
+    grelha.onpointerup = grelha.onpointercancel = () => {
+      if (!ini) return; ini = null;
+      const txt = sel.map((s) => s.textContent).join(""), inv = [...txt].reverse().join("");
+      const i = postas.findIndex((p) => !p.achada && (p.w === txt || p.w === inv) && sel.length === p.w.length);
+      if (i >= 0) {
+        postas[i].achada = true; sel.forEach((s) => s.classList.add("ok")); $(`.sopa-lista [data-i="${i}"]`, box).classList.add("ok");
+        const falta = postas.filter((p) => !p.achada).length;
+        msg.textContent = falta ? `Boa! Encontraste ${postas[i].w}. Faltam ${falta}.` : "🎉 Parabéns! Encontraste todas as palavras!";
+        if (!falta) box.classList.add("ganhou");
+      }
+      limpar();
+    };
+  }
+  novo();
+}
+
+/* --- Jogo do galo --- */
+function jogoGalo(el) {
+  let modo = "bot", nivel = "medio", pts = { X: 0, O: 0, E: 0 };
+  try { const g = JSON.parse(localStorage.getItem("casa-galo") || "{}"); if (g.modo) modo = g.modo; if (g.nivel) nivel = g.nivel; if (g.pts) pts = g.pts; } catch (e) {}
+  const LINHAS = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+  const vencedor = (b) => { for (const l of LINHAS) if (b[l[0]] && b[l[0]] === b[l[1]] && b[l[1]] === b[l[2]]) return { j: b[l[0]], l }; return b.every(Boolean) ? { j: "E" } : null; };
+  const minimax = (b, j) => {
+    const v = vencedor(b); if (v) return { s: v.j === "O" ? 10 : v.j === "X" ? -10 : 0 };
+    let best = { s: j === "O" ? -99 : 99 };
+    for (let i = 0; i < 9; i++) if (!b[i]) { b[i] = j; const r = minimax(b, j === "O" ? "X" : "O"); b[i] = ""; const s = r.s - Math.sign(r.s) * 0.1; if (j === "O" ? s > best.s : s < best.s) best = { s, i }; }
+    return best;
+  };
+  const jogadaBot = (b) => {
+    const livres = b.map((x, i) => (x ? -1 : i)).filter((i) => i >= 0);
+    if (nivel === "facil" || (nivel === "medio" && Math.random() < 0.35)) {
+      if (nivel === "medio") { for (const j of ["O", "X"]) for (const i of livres) { const t = [...b]; t[i] = j; if (vencedor(t) && vencedor(t).j === j) return i; } }
+      return sorteia(livres);
+    }
+    if (nivel === "medio") { for (const j of ["O", "X"]) for (const i of livres) { const t = [...b]; t[i] = j; if (vencedor(t) && vencedor(t).j === j) return i; } if (!b[4]) return 4; return sorteia(livres); }
+    return minimax([...b], "O").i;
+  };
+  let b = Array(9).fill(""), vez = "X", fim = false, comeca = "X";
+  const guardar = () => { try { localStorage.setItem("casa-galo", JSON.stringify({ modo, nivel, pts })); } catch (e) {} };
+  el.innerHTML = cab("Jogo do galo", "Faz três em linha antes do outro jogador!");
+  el.insertAdjacentHTML("beforeend", `<section class="seccao galo">
+    <div class="jogo-topo">${voltarJogos}
+      <select class="j-modo" aria-label="Modo de jogo"><option value="bot" ${modo === "bot" ? "selected" : ""}>🤖 Contra o computador</option><option value="dois" ${modo === "dois" ? "selected" : ""}>👫 A dois</option></select>
+      <select class="j-nivel" aria-label="Dificuldade" ${modo === "dois" ? "hidden" : ""}><option value="facil" ${nivel === "facil" ? "selected" : ""}>Fácil</option><option value="medio" ${nivel === "medio" ? "selected" : ""}>Médio</option><option value="dificil" ${nivel === "dificil" ? "selected" : ""}>Impossível</option></select></div>
+    <div class="galo-pts"></div>
+    <div class="galo-tab" role="grid" aria-label="Tabuleiro">${b.map((_, i) => `<button type="button" data-i="${i}" aria-label="Casa ${i + 1}"></button>`).join("")}</div>
+    <p class="j-msg" aria-live="polite"></p>
+    <div class="acoes"><button type="button" class="pri j-novo">🔄 Jogar outra vez</button><button type="button" class="sec j-zero">Zerar pontos</button></div></section>`);
+  const box = $(".galo", el), tab = $(".galo-tab", box), msg = $(".j-msg", box);
+  const nomes = () => (modo === "bot" ? { X: "Tu (✖)", O: "Computador (◯)" } : { X: "Jogador ✖", O: "Jogador ◯" });
+  const mostrar = (v) => {
+    [...tab.children].forEach((c, i) => { c.textContent = b[i] === "X" ? "✖" : b[i] === "O" ? "◯" : ""; c.className = b[i] ? "j" + b[i] : ""; c.disabled = !!b[i] || fim; });
+    if (v && v.l) v.l.forEach((i) => tab.children[i].classList.add("linha"));
+    const n = nomes();
+    $(".galo-pts", box).innerHTML = `<span class="pX">${n.X}: <b>${pts.X}</b></span><span>Empates: <b>${pts.E}</b></span><span class="pO">${n.O}: <b>${pts.O}</b></span>`;
+    msg.textContent = v ? (v.j === "E" ? "Empate! 🤝" : modo === "bot" ? (v.j === "X" ? "🎉 Ganhaste!" : "O computador ganhou. Tenta outra vez!") : `🎉 Ganhou o ${n[v.j]}!`) : modo === "bot" ? (vez === "X" ? "É a tua vez." : "O computador está a pensar…") : `Vez do ${n[vez]}.`;
+  };
+  const jogar = (i) => {
+    if (fim || b[i]) return;
+    b[i] = vez; const v = vencedor(b);
+    if (v) { fim = true; pts[v.j]++; guardar(); return mostrar(v); }
+    vez = vez === "X" ? "O" : "X"; mostrar();
+    if (modo === "bot" && vez === "O") setTimeout(() => jogar(jogadaBot(b)), 450);
+  };
+  const novo = () => { b = Array(9).fill(""); fim = false; comeca = comeca === "X" ? "O" : "X"; vez = comeca; mostrar(); if (modo === "bot" && vez === "O") setTimeout(() => jogar(jogadaBot(b)), 450); };
+  tab.onclick = (e) => { const c = e.target.closest("button"); if (!c || (modo === "bot" && vez === "O")) return; jogar(+c.dataset.i); };
+  $(".j-novo", box).onclick = novo;
+  $(".j-zero", box).onclick = () => { pts = { X: 0, O: 0, E: 0 }; guardar(); mostrar(vencedor(b)); };
+  $(".j-modo", box).onchange = (e) => { modo = e.target.value; $(".j-nivel", box).hidden = modo === "dois"; pts = { X: 0, O: 0, E: 0 }; guardar(); comeca = "O"; novo(); };
+  $(".j-nivel", box).onchange = (e) => { nivel = e.target.value; guardar(); };
+  comeca = "O"; novo();
+}
+
+/* --- Jogo da forca --- */
+function jogoForca(el) {
+  el.innerHTML = cab("Jogo da forca", "O jogador 1 escolhe uma palavra secreta; o jogador 2 tenta adivinhar letra a letra.");
+  el.insertAdjacentHTML("beforeend", `<section class="seccao forca">
+    <div class="jogo-topo">${voltarJogos}</div>
+    <form class="forca-escolha" autocomplete="off">
+      <h2>👤 Jogador 1: escolhe a palavra</h2>
+      <p class="det">Não deixes o jogador 2 espreitar! 🙈</p>
+      <label class="campo"><span>Palavra secreta</span><span class="forca-seg"><input name="palavra" type="password" maxlength="24" required autocapitalize="characters" spellcheck="false" placeholder="ex: elefante"><button type="button" class="sec peq ver" aria-label="Mostrar a palavra">👁️</button></span></label>
+      <label class="campo"><span>Dica (opcional)</span><input name="dica" type="text" maxlength="40" placeholder="ex: animal grande"></label>
+      <p class="msg" role="alert"></p>
+      <div class="acoes"><button type="submit" class="pri">💾 Gravar e jogar</button><button type="button" class="sec aleat">🎲 Palavra do computador</button></div>
+    </form>
+    <div class="forca-jogo" hidden>
+      <svg class="forca-svg" viewBox="0 0 200 220" aria-hidden="true">
+        <path class="base" d="M20 210h110M50 210V20h90v25"/>
+        <circle class="p p1" cx="140" cy="62" r="17"/><path class="p p2" d="M140 79v58"/><path class="p p3" d="M140 95l-25 25"/><path class="p p4" d="M140 95l25 25"/><path class="p p5" d="M140 137l-22 35"/><path class="p p6" d="M140 137l22 35"/>
+      </svg>
+      <p class="forca-dica"></p>
+      <div class="forca-palavra" aria-live="polite"></div>
+      <p class="forca-erros"></p>
+      <div class="forca-teclado">${"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((l) => `<button type="button" data-l="${l}">${l}</button>`).join("")}</div>
+      <p class="j-msg" aria-live="polite"></p>
+      <div class="acoes"><button type="button" class="pri j-novo" hidden>🔄 Nova palavra</button></div>
+    </div></section>`);
+  const box = $(".forca", el), f = $(".forca-escolha", box), jogo = $(".forca-jogo", box);
+  $(".ver", f).onclick = () => { const i = f.elements.palavra; i.type = i.type === "password" ? "text" : "password"; };
+  const norm = (l) => semAcento(l).toUpperCase();
+  let palavra = "", tentadas = new Set(), erros = 0;
+  const MAX = 6;
+  const mostrar = () => {
+    const letras = [...palavra];
+    $(".forca-palavra", jogo).innerHTML = letras.map((l) => /[A-ZÀ-ÿ]/i.test(l) ? `<span class="${tentadas.has(norm(l)) ? "v" : ""}">${tentadas.has(norm(l)) ? l : ""}</span>` : `<span class="esp">${l === " " ? "&nbsp;" : esc(l)}</span>`).join("");
+    for (let i = 1; i <= MAX; i++) $(".p" + i, jogo).classList.toggle("on", erros >= i);
+    $(".forca-erros", jogo).textContent = `Erros: ${erros} de ${MAX}`;
+    const ganhou = letras.every((l) => !/[A-ZÀ-ÿ]/i.test(l) || tentadas.has(norm(l))), perdeu = erros >= MAX;
+    const m = $(".j-msg", jogo);
+    if (ganhou || perdeu) {
+      m.textContent = ganhou ? "🎉 Parabéns, adivinhaste!" : `😵 Enforcado! A palavra era ${palavra}.`;
+      if (perdeu) $(".forca-palavra", jogo).innerHTML = letras.map((l) => /[A-ZÀ-ÿ]/i.test(l) ? `<span class="${tentadas.has(norm(l)) ? "v" : "falhou"}">${l}</span>` : `<span class="esp">${l === " " ? "&nbsp;" : esc(l)}</span>`).join("");
+      jogo.querySelectorAll(".forca-teclado button").forEach((b) => (b.disabled = true));
+      $(".j-novo", jogo).hidden = false; jogo.classList.toggle("ganhou", ganhou);
+    } else m.textContent = "";
+  };
+  const comecar = (p, dica) => {
+    palavra = p.trim().toUpperCase().replace(/\s+/g, " "); tentadas = new Set(); erros = 0;
+    $(".forca-dica", jogo).textContent = dica ? "💡 Dica: " + dica : "";
+    jogo.querySelectorAll(".forca-teclado button").forEach((b) => { b.disabled = false; b.className = ""; });
+    $(".j-novo", jogo).hidden = true; jogo.classList.remove("ganhou");
+    f.hidden = true; jogo.hidden = false; mostrar();
+  };
+  f.onsubmit = (e) => {
+    e.preventDefault();
+    const p = f.elements.palavra.value.trim();
+    if (!/^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ \-]{1,23}$/.test(p) || p.replace(/[^A-Za-zÀ-ÿ]/g, "").length < 3) { $(".msg", f).textContent = "Escreve uma palavra com pelo menos 3 letras (só letras, espaços ou hífen)."; return; }
+    comecar(p, f.elements.dica.value.trim());
+  };
+  $(".aleat", f).onclick = () => { const [p, d] = sorteia(PALAVRAS_FORCA); comecar(p, d); };
+  $(".forca-teclado", jogo).onclick = (e) => {
+    const b = e.target.closest("button"); if (!b || b.disabled) return;
+    const l = b.dataset.l; b.disabled = true;
+    const tem = [...palavra].some((x) => norm(x) === l); // o C também mostra o Ç, o A mostra Á/Ã…
+    tentadas.add(l);
+    b.classList.add(tem ? "certa" : "errada"); if (!tem) erros++;
+    mostrar();
+  };
+  $(".j-novo", jogo).onclick = () => { f.reset(); f.elements.palavra.type = "password"; $(".msg", f).textContent = ""; jogo.hidden = true; f.hidden = false; };
 }
 
 /* ---------- Livros: biblioteca de ebooks (EPUB e PDF) carregados pelos pais ---------- */
