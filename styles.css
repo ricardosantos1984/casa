@@ -500,6 +500,7 @@ body.crianca [data-ocultar], body.crianca [data-repor] { display: none !importan
 .ds-tam{display:flex;gap:6px;margin-right:auto}
 .ds-t{width:42px;height:42px;border-radius:12px;border:1px solid var(--linha);background:var(--painel2);display:grid;place-items:center;padding:0}
 .ds-t i{display:block;border-radius:50%;background:var(--texto)}
+.ds-tamb .ds-t i{background:none;border:2px dashed var(--texto)}
 .ds-t.on,.ds-b.on{border-color:var(--acento);background:var(--acento-f)}
 .ds-b{width:44px;height:42px;border-radius:12px;border:1px solid var(--linha);background:var(--painel2);font-size:20px;padding:0}
 .ds-papel{border-radius:var(--raio);overflow:hidden;border:1px solid var(--linha);background:#fff}

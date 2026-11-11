@@ -2610,6 +2610,7 @@ async function vDesenhos(el) {
         <label class="ds-cor ds-mais" title="Outra cor" aria-label="Escolher outra cor"><input type="color" value="#ff6f00"></label></div>
       <div class="ds-linha">
         <div class="ds-tam">${[4, 10, 20, 36].map((t, i) => `<button type="button" class="ds-t${i === 1 ? " on" : ""}" data-t="${t}" aria-label="Pincel ${t}"><i style="width:${Math.min(t, 26)}px;height:${Math.min(t, 26)}px"></i></button>`).join("")}</div>
+        <div class="ds-tam ds-tamb" hidden>${[12, 30, 55, 90].map((t, i) => `<button type="button" class="ds-t${i === 1 ? " on" : ""}" data-tb="${t}" aria-label="Borracha ${["pequena", "média", "grande", "enorme"][i]}"><i style="width:${[8, 14, 20, 26][i]}px;height:${[8, 14, 20, 26][i]}px"></i></button>`).join("")}</div>
         <button type="button" class="ds-b" data-a="borracha" aria-pressed="false" title="Borracha">🧽</button>
         <button type="button" class="ds-b" data-a="balde" aria-pressed="false" title="Pintar o fundo">🪣</button>
         <button type="button" class="ds-b" data-a="desfazer" title="Desfazer">↩️</button>
@@ -2622,7 +2623,7 @@ async function vDesenhos(el) {
   el.appendChild(box);
   const cv = $("canvas", box), papel = $(".ds-papel", box), ctx = cv.getContext("2d");
   const CHAVE = "casa-desenho-" + (EU || "eu");
-  let cor = CORES_DESENHO[0], tam = 10, borracha = false, balde = false, fundo = "#FFFFFF";
+  let cor = CORES_DESENHO[0], tam = 10, tamB = 30, borracha = false, balde = false, fundo = "#FFFFFF";
   const historico = [];
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   function tamanhoFolha() {
@@ -2648,7 +2649,7 @@ async function vDesenhos(el) {
   const traco = (a, b) => {
     ctx.globalCompositeOperation = "source-over";
     ctx.strokeStyle = borracha ? fundo : cor;
-    ctx.lineWidth = tam * dpr * (borracha ? 1.6 : 0.6 + b[2] * 0.7);
+    ctx.lineWidth = borracha ? tamB * dpr : tam * dpr * (0.6 + b[2] * 0.7);
     ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
   };
   cv.addEventListener("pointerdown", (e) => {
@@ -2670,16 +2671,19 @@ async function vDesenhos(el) {
   }
   const marcar = (sel, alvo) => box.querySelectorAll(sel).forEach((b) => b.classList.toggle("on", b === alvo));
   const ferr = (nome, ligar) => { const b = $(`[data-a="${nome}"]`, box); b.classList.toggle("on", ligar); b.setAttribute("aria-pressed", ligar); };
-  box.querySelectorAll(".ds-cor[data-cor]").forEach((b) => b.onclick = () => { cor = b.dataset.cor; borracha = false; ferr("borracha", false); marcar(".ds-cor", b); });
-  $(".ds-mais input", box).oninput = (e) => { cor = e.target.value; borracha = false; ferr("borracha", false); marcar(".ds-cor", $(".ds-mais", box)); $(".ds-mais", box).style.setProperty("--c", cor); };
-  box.querySelectorAll(".ds-t").forEach((b) => b.onclick = () => { tam = +b.dataset.t; marcar(".ds-t", b); });
+  box.querySelectorAll(".ds-cor[data-cor]").forEach((b) => b.onclick = () => { cor = b.dataset.cor; borracha = false; ferr("borracha", false); modoBorracha(); marcar(".ds-cor", b); });
+  $(".ds-mais input", box).oninput = (e) => { cor = e.target.value; borracha = false; ferr("borracha", false); modoBorracha(); marcar(".ds-cor", $(".ds-mais", box)); $(".ds-mais", box).style.setProperty("--c", cor); };
+  box.querySelectorAll(".ds-t[data-t]").forEach((b) => b.onclick = () => { tam = +b.dataset.t; marcar(".ds-t[data-t]", b); });
+  box.querySelectorAll(".ds-t[data-tb]").forEach((b) => b.onclick = () => { tamB = +b.dataset.tb; marcar(".ds-t[data-tb]", b); });
+  // com a borracha ligada, os tamanhos passam a ser os da borracha
+  const modoBorracha = () => { $(".ds-tam:not(.ds-tamb)", box).hidden = borracha; $(".ds-tamb", box).hidden = !borracha; };
   const nomeFicheiro = () => "desenho-" + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "") + ".png";
   const ficheiro = () => new Promise((ok) => cv.toBlob((b) => ok(new File([b], nomeFicheiro(), { type: "image/png" })), "image/png"));
   box.querySelector(".ds-linha").onclick = async (e) => {
     const b = e.target.closest("[data-a]"); if (!b) return;
     const a = b.dataset.a;
-    if (a === "borracha") { borracha = !borracha; balde = false; ferr("borracha", borracha); ferr("balde", false); }
-    else if (a === "balde") { balde = !balde; borracha = false; ferr("balde", balde); ferr("borracha", false); }
+    if (a === "borracha") { borracha = !borracha; balde = false; ferr("borracha", borracha); ferr("balde", false); modoBorracha(); }
+    else if (a === "balde") { balde = !balde; borracha = false; ferr("balde", balde); ferr("borracha", false); modoBorracha(); }
     else if (a === "desfazer") { const p = historico.pop(); if (p) { ctx.putImageData(p, 0, 0); guardarLocal(); } }
     else if (a === "limpar") { if (!confirm("Começar uma folha nova? O desenho atual desaparece (guarda-o primeiro na galeria se gostares dele).")) return; guardarPasso(); fundo = "#FFFFFF"; preparar(); guardarLocal(); }
   };
