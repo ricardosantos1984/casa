@@ -2601,6 +2601,15 @@ async function iniciar() {
 
 /* ---------- Desenhos: bloco de desenho para a Ema (fica guardado neste telemóvel; pode ir para a galeria) ---------- */
 const CORES_DESENHO = ["#111111", "#FFFFFF", "#E53935", "#FB8C00", "#FDD835", "#43A047", "#00ACC1", "#1E88E5", "#8E24AA", "#EC407A", "#8D6E63", "#9E9E9E"];
+const FORMAS_DESENHO = [
+  ["livre", "Desenhar à mão", '<path d="M4 20c3-1 4-4 7-7l6-6 2 2-6 6c-3 3-6 4-7 7z" fill="none"/>'],
+  ["linha", "Linha", '<path d="M5 19L19 5" fill="none"/>'],
+  ["ret", "Retângulo", '<rect x="4" y="6" width="16" height="12" rx="1" fill="none"/>'],
+  ["circ", "Círculo", '<circle cx="12" cy="12" r="8" fill="none"/>'],
+  ["tri", "Triângulo", '<path d="M12 4l8 16H4z" fill="none"/>'],
+  ["estrela", "Estrela", '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="none"/>'],
+  ["coracao", "Coração", '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="none"/>'],
+];
 async function vDesenhos(el) {
   el.innerHTML = cab("Desenhos", "Desenha com o dedo. Quando gostares do desenho, guarda-o na galeria do telemóvel.");
   const box = document.createElement("section");
@@ -2616,6 +2625,10 @@ async function vDesenhos(el) {
         <button type="button" class="ds-b" data-a="desfazer" title="Desfazer">↩️</button>
         <button type="button" class="ds-b" data-a="limpar" title="Folha nova">🗑️</button>
       </div>
+      <div class="ds-formas" role="group" aria-label="Formas">${FORMAS_DESENHO.map(([f, nome, ico], i) => `<button type="button" class="ds-f${i === 0 ? " on" : ""}" data-f="${f}" title="${nome}" aria-label="${nome}"><svg viewBox="0 0 24 24" aria-hidden="true">${ico}</svg></button>`).join("")}
+        <button type="button" class="ds-f ds-cheia" data-a2="cheia" aria-pressed="false" title="Formas cheias ou só o contorno" aria-label="Formas cheias"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
+        <label class="ds-f ds-abrir" title="Abrir uma foto ou desenho da galeria" aria-label="Abrir foto ou desenho da galeria">📷<input type="file" accept="image/*" hidden></label>
+      </div>
     </div>
     <div class="ds-papel"><canvas aria-label="Folha de desenho"></canvas></div>
     <div class="acoes ds-acoes"><button type="button" class="pri" data-a="galeria">🖼️ Guardar na galeria</button><button type="button" class="sec" data-a="partilhar">📤 Enviar…</button></div>
@@ -2623,7 +2636,7 @@ async function vDesenhos(el) {
   el.appendChild(box);
   const cv = $("canvas", box), papel = $(".ds-papel", box), ctx = cv.getContext("2d");
   const CHAVE = "casa-desenho-" + (EU || "eu");
-  let cor = CORES_DESENHO[0], tam = 10, tamB = 30, borracha = false, balde = false, fundo = "#FFFFFF";
+  let cor = CORES_DESENHO[0], tam = 10, tamB = 30, borracha = false, balde = false, fundo = "#FFFFFF", forma = "livre", cheia = false, snap = null, ini = null;
   const historico = [];
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   function tamanhoFolha() {
@@ -2656,10 +2669,29 @@ async function vDesenhos(el) {
     e.preventDefault(); cv.setPointerCapture(e.pointerId);
     guardarPasso();
     if (balde) { pintarFundo(borracha ? "#FFFFFF" : cor); balde = false; ferr("balde", false); return; }
-    aDesenhar = true; ult = ponto(e); traco(ult, [ult[0] + 0.1, ult[1] + 0.1, ult[2]]);
+    aDesenhar = true; ult = ponto(e);
+    if (forma !== "livre" && !borracha) { try { snap = ctx.getImageData(0, 0, cv.width, cv.height); } catch (err) { snap = null; } ini = ult; return; }
+    traco(ult, [ult[0] + 0.1, ult[1] + 0.1, ult[2]]);
   });
-  cv.addEventListener("pointermove", (e) => { if (!aDesenhar) return; e.preventDefault(); const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; for (const ev of evs) { const p = ponto(ev); traco(ult, p); ult = p; } });
-  const fim = () => { if (aDesenhar) { aDesenhar = false; guardarLocal(); } };
+  cv.addEventListener("pointermove", (e) => {
+    if (!aDesenhar) return; e.preventDefault();
+    if (snap) { ctx.putImageData(snap, 0, 0); desenharForma(ini, ponto(e)); return; }
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; for (const ev of evs) { const p = ponto(ev); traco(ult, p); ult = p; }
+  });
+  const fim = () => { if (aDesenhar) { aDesenhar = false; snap = null; guardarLocal(); } };
+  // formas geométricas: arrasta o dedo de um canto ao outro
+  function desenharForma(a, b) {
+    const [x0, y0] = a, [x1, y1] = b, L = Math.min(x0, x1), T = Math.min(y0, y1), W = Math.abs(x1 - x0), H = Math.abs(y1 - y0), cx = L + W / 2, cy = T + H / 2;
+    ctx.globalCompositeOperation = "source-over"; ctx.strokeStyle = cor; ctx.fillStyle = cor; ctx.lineWidth = tam * dpr * 0.8;
+    ctx.beginPath();
+    if (forma === "linha") { ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); return; }
+    if (forma === "ret") ctx.rect(L, T, W, H);
+    else if (forma === "circ") ctx.ellipse(cx, cy, W / 2 || 0.5, H / 2 || 0.5, 0, 0, Math.PI * 2);
+    else if (forma === "tri") { ctx.moveTo(cx, T); ctx.lineTo(L + W, T + H); ctx.lineTo(L, T + H); ctx.closePath(); }
+    else if (forma === "estrela") { for (let i = 0; i < 10; i++) { const r = i % 2 ? 0.42 : 1, ang = -Math.PI / 2 + (i * Math.PI) / 5; const px = cx + Math.cos(ang) * (W / 2) * r, py = cy + Math.sin(ang) * (H / 2) * r * 1.05 + H * 0.04; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.closePath(); }
+    else if (forma === "coracao") { ctx.moveTo(cx, T + H * 0.3); ctx.bezierCurveTo(cx, T, L, T, L, T + H * 0.32); ctx.bezierCurveTo(L, T + H * 0.62, cx, T + H * 0.78, cx, T + H); ctx.bezierCurveTo(cx, T + H * 0.78, L + W, T + H * 0.62, L + W, T + H * 0.32); ctx.bezierCurveTo(L + W, T, cx, T, cx, T + H * 0.3); ctx.closePath(); }
+    cheia ? ctx.fill() : ctx.stroke();
+  }
   cv.addEventListener("pointerup", fim); cv.addEventListener("pointercancel", fim); cv.addEventListener("pointerleave", fim);
   // balde: muda a cor do fundo mantendo o desenho (troca os píxeis da cor de fundo antiga)
   function pintarFundo(nova) {
@@ -2677,6 +2709,22 @@ async function vDesenhos(el) {
   box.querySelectorAll(".ds-t[data-tb]").forEach((b) => b.onclick = () => { tamB = +b.dataset.tb; marcar(".ds-t[data-tb]", b); });
   // com a borracha ligada, os tamanhos passam a ser os da borracha
   const modoBorracha = () => { $(".ds-tam:not(.ds-tamb)", box).hidden = borracha; $(".ds-tamb", box).hidden = !borracha; };
+  box.querySelectorAll(".ds-f[data-f]").forEach((b) => b.onclick = () => { forma = b.dataset.f; marcar(".ds-f[data-f]", b); borracha = false; balde = false; ferr("borracha", false); ferr("balde", false); modoBorracha(); });
+  $(".ds-cheia", box).onclick = (e) => { cheia = !cheia; e.currentTarget.classList.toggle("on", cheia); e.currentTarget.setAttribute("aria-pressed", cheia); };
+  // abrir uma foto ou um desenho da galeria: fica na folha (inteira, ao centro) e pode-se desenhar por cima
+  $(".ds-abrir input", box).onchange = (e) => {
+    const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+    const url = URL.createObjectURL(f), im = new Image();
+    im.onload = () => {
+      guardarPasso();
+      const k = Math.min(cv.width / im.width, cv.height / im.height), w = im.width * k, h = im.height * k;
+      ctx.fillStyle = fundo; ctx.fillRect(0, 0, cv.width, cv.height);
+      ctx.drawImage(im, (cv.width - w) / 2, (cv.height - h) / 2, w, h);
+      URL.revokeObjectURL(url); guardarLocal();
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); aviso("Não consegui abrir essa imagem."); };
+    im.src = url;
+  };
   const nomeFicheiro = () => "desenho-" + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "") + ".png";
   const ficheiro = () => new Promise((ok) => cv.toBlob((b) => ok(new File([b], nomeFicheiro(), { type: "image/png" })), "image/png"));
   box.querySelector(".ds-linha").onclick = async (e) => {

@@ -530,3 +530,11 @@ body.a-ler{overflow:hidden}
 .lt-msg{color:var(--suave);text-align:center;margin-top:30vh}
 .lt-zona{position:absolute;top:30%;bottom:30%;width:16%;z-index:1;background:none;border:none;padding:0}
 .lt-zona.esq{left:0}.lt-zona.dir{right:0}
+
+.ds-formas{display:flex;flex-wrap:wrap;gap:6px}
+.ds-f{width:42px;height:42px;border-radius:12px;border:1px solid var(--linha);background:var(--painel2);display:grid;place-items:center;padding:0;font-size:20px;cursor:pointer}
+.ds-f svg{width:22px;height:22px;stroke:var(--texto);stroke-width:2;stroke-linejoin:round;stroke-linecap:round;fill:none}
+.ds-f.on{border-color:var(--acento);background:var(--acento-f)}
+.ds-cheia svg rect{fill:none}
+.ds-cheia.on svg rect{fill:var(--texto)}
+.ds-abrir{margin-left:auto}
