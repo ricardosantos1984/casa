@@ -2584,6 +2584,37 @@ async function iniciar() {
   if (data.session) await entrar(data.session); else mostrarLogin();
 }
 
+/* ---------- instalar a app no Android (Chrome, Samsung Internet, Edge…) ---------- */
+(function () {
+  const android = /android/i.test(navigator.userAgent);
+  const jaInstalada = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  if (!android || jaInstalada()) return;
+  try { const f = +localStorage.getItem("casa-instalar-fechado") || 0; if (Date.now() - f < 14 * 864e5) return; } catch (e) {}
+  let pedido = null;
+  const samsung = /samsungbrowser/i.test(navigator.userAgent), firefox = /firefox/i.test(navigator.userAgent);
+  const passos = samsung ? "Toca no menu ☰ (em baixo, à direita) → «Adicionar página a» → «Ecrã inicial»."
+    : firefox ? "Toca no menu ⋮ → «Instalar» ou «Adicionar ao ecrã principal». Se não aparecer, abre este endereço no Google Chrome."
+    : "Toca no menu ⋮ (em cima, à direita) → «Instalar app» ou «Adicionar ao ecrã principal» → «Instalar».";
+  const barra = document.createElement("div");
+  barra.className = "instalar-barra"; barra.setAttribute("role", "region"); barra.setAttribute("aria-label", "Instalar a app");
+  barra.innerHTML = '<img src="icons/icon-192.png" alt=""><div class="ib-txt"><b>Instalar «A Nossa Casa»</b><span class="ib-sub">Fica com ícone no telemóvel, como uma app.</span></div><button type="button" class="pri ib-sim">Instalar</button><button type="button" class="ib-nao" aria-label="Agora não">✕</button>';
+  const sub = barra.querySelector(".ib-sub");
+  barra.querySelector(".ib-sim").onclick = async () => {
+    if (pedido) {
+      pedido.prompt();
+      const r = await pedido.userChoice.catch(() => ({}));
+      pedido = null;
+      if (r && r.outcome === "accepted") { barra.remove(); return; }
+    }
+    sub.textContent = passos; barra.classList.add("ib-passos");
+  };
+  barra.querySelector(".ib-nao").onclick = () => { try { localStorage.setItem("casa-instalar-fechado", String(Date.now())); } catch (e) {} barra.remove(); };
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); pedido = e; });
+  window.addEventListener("appinstalled", () => barra.remove());
+  const mostrar = () => { if (!document.body.contains(barra)) document.body.appendChild(barra); };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(mostrar, 1500)); else setTimeout(mostrar, 1500);
+})();
+
 montarMenus();
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
 $("#btn-copia").onclick = exportarExcel;
