@@ -2619,7 +2619,16 @@ async function vDesenhos(el) {
   box.className = "seccao desenho";
   box.innerHTML = `<div class="ds-ferr" role="toolbar" aria-label="Ferramentas de desenho">
       <div class="ds-cores">${CORES_DESENHO.map((c, i) => `<button type="button" class="ds-cor${i === 0 ? " on" : ""}" data-cor="${c}" style="--c:${c}" aria-label="Cor ${c}"></button>`).join("")}
-        <label class="ds-cor ds-mais" title="Outra cor" aria-label="Escolher outra cor"><input type="color" value="#ff6f00"></label></div>
+        <button type="button" class="ds-cor ds-mais" title="Roda das cores" aria-label="Abrir a roda das cores" aria-expanded="false"></button></div>
+      <div class="ds-roda" hidden>
+        <div class="dr-esq"><div class="dr-roda"><canvas width="440" height="440" aria-label="Roda das cores: toca numa cor"></canvas><i class="dr-mira"></i></div></div>
+        <div class="dr-dir">
+          <span class="dr-prev" aria-hidden="true"></span>
+          <label class="dr-luz"><span>☀️ Claro / escuro</span><input type="range" min="10" max="100" value="100" aria-label="Claro ou escuro"></label>
+          <div class="dr-rec-t">Cores recentes</div><div class="dr-rec"></div>
+          <button type="button" class="pri peq dr-ok">✓ Usar esta cor</button>
+        </div>
+      </div>
       <div class="ds-linha">
         <div class="ds-tam">${[4, 10, 20, 36].map((t, i) => `<button type="button" class="ds-t${i === 1 ? " on" : ""}" data-t="${t}" aria-label="Pincel ${t}"><i style="width:${Math.min(t, 26)}px;height:${Math.min(t, 26)}px"></i></button>`).join("")}</div>
         <div class="ds-tam ds-tamb" hidden>${[12, 30, 55, 90].map((t, i) => `<button type="button" class="ds-t${i === 1 ? " on" : ""}" data-tb="${t}" aria-label="Borracha ${["pequena", "média", "grande", "enorme"][i]}"><i style="width:${[8, 14, 20, 26][i]}px;height:${[8, 14, 20, 26][i]}px"></i></button>`).join("")}</div>
@@ -2638,7 +2647,7 @@ async function vDesenhos(el) {
     <div class="acoes ds-acoes"><button type="button" class="pri" data-a="galeria">🖼️ Guardar na galeria</button><button type="button" class="sec" data-a="partilhar">📤 Enviar…</button></div>
     <p class="det ds-nota">O desenho fica guardado neste telemóvel enquanto desenhas, mesmo que saias da app.</p>`;
   el.appendChild(box);
-  const cv = $("canvas", box), papel = $(".ds-papel", box), ctx = cv.getContext("2d");
+  const cv = $(".ds-papel canvas", box), papel = $(".ds-papel", box), ctx = cv.getContext("2d");
   const CHAVE = "casa-desenho-" + (EU || "eu");
   let cor = CORES_DESENHO[0], tam = 10, tamB = 30, borracha = false, balde = false, fundo = "#FFFFFF", forma = "livre", cheia = false, snap = null, ini = null;
   const historico = [];
@@ -2739,8 +2748,49 @@ async function vDesenhos(el) {
   }
   const marcar = (sel, alvo) => box.querySelectorAll(sel).forEach((b) => b.classList.toggle("on", b === alvo));
   const ferr = (nome, ligar) => { const b = $(`[data-a="${nome}"]`, box); b.classList.toggle("on", ligar); b.setAttribute("aria-pressed", ligar); };
-  box.querySelectorAll(".ds-cor[data-cor]").forEach((b) => b.onclick = () => { cor = b.dataset.cor; borracha = false; ferr("borracha", false); modoBorracha(); marcar(".ds-cor", b); });
-  $(".ds-mais input", box).oninput = (e) => { cor = e.target.value; borracha = false; ferr("borracha", false); modoBorracha(); marcar(".ds-cor", $(".ds-mais", box)); $(".ds-mais", box).style.setProperty("--c", cor); };
+  box.querySelectorAll(".ds-cor[data-cor]").forEach((b) => b.onclick = () => { fecharRoda(false); cor = b.dataset.cor; borracha = false; ferr("borracha", false); modoBorracha(); marcar(".ds-cor", b); });
+  // roda das cores: tom à volta, intensidade do centro para fora, e um deslizador para claro/escuro
+  const roda = $(".ds-roda", box), rcv = $(".dr-roda canvas", roda), rctx = rcv.getContext("2d"), mira = $(".dr-mira", roda), luz = $(".dr-luz input", roda);
+  const CHAVE_REC = "casa-desenho-recentes";
+  let hsv = [30, 1, 1], recentes = [];
+  try { recentes = JSON.parse(localStorage.getItem(CHAVE_REC) || "[]"); } catch (e) {}
+  const hsv2hex = (h, s, v) => { const f = (n) => { const k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); }; return "#" + [f(5), f(3), f(1)].map((x) => Math.round(x * 255).toString(16).padStart(2, "0")).join("").toUpperCase(); };
+  (function pintarRoda() {
+    const W = rcv.width, R = W / 2, img = rctx.createImageData(W, W), d = img.data;
+    for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
+      const dx = x - R, dy = y - R, r = Math.sqrt(dx * dx + dy * dy), i = (y * W + x) * 4;
+      if (r > R) continue;
+      const h = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360, c = hsv2hex(h, r / R, 1);
+      d[i] = parseInt(c.slice(1, 3), 16); d[i + 1] = parseInt(c.slice(3, 5), 16); d[i + 2] = parseInt(c.slice(5, 7), 16); d[i + 3] = r > R - 1.5 ? (R - r) / 1.5 * 255 : 255;
+    }
+    rctx.putImageData(img, 0, 0);
+  })();
+  const corRoda = () => hsv2hex(hsv[0], hsv[1], hsv[2]);
+  const mostrarRoda = () => {
+    const a = hsv[0] * Math.PI / 180;
+    mira.style.left = 50 + Math.cos(a) * hsv[1] * 50 + "%"; mira.style.top = 50 + Math.sin(a) * hsv[1] * 50 + "%";
+    rcv.style.filter = "brightness(" + hsv[2] + ")";
+    $(".dr-prev", roda).style.background = corRoda();
+    $(".dr-rec", roda).innerHTML = recentes.map((c) => `<button type="button" class="ds-cor" data-rc="${c}" style="--c:${c}" aria-label="Cor ${c}"></button>`).join("") || '<span class="det">Ainda nenhuma.</span>';
+  };
+  const usarCor = (c) => { cor = c; borracha = false; ferr("borracha", false); modoBorracha(); marcar(".ds-cor", $(".ds-mais", box)); $(".ds-mais", box).style.setProperty("--c", c); $(".ds-mais", box).classList.add("tem"); };
+  const escolher = (e) => {
+    const r = rcv.getBoundingClientRect(), dx = e.clientX - r.left - r.width / 2, dy = e.clientY - r.top - r.height / 2;
+    hsv[0] = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360; hsv[1] = Math.min(1, Math.sqrt(dx * dx + dy * dy) / (r.width / 2));
+    mostrarRoda(); usarCor(corRoda());
+  };
+  let aEscolher = false;
+  rcv.addEventListener("pointerdown", (e) => { e.preventDefault(); aEscolher = true; rcv.setPointerCapture(e.pointerId); escolher(e); });
+  rcv.addEventListener("pointermove", (e) => { if (aEscolher) { e.preventDefault(); escolher(e); } });
+  rcv.addEventListener("pointerup", () => (aEscolher = false)); rcv.addEventListener("pointercancel", () => (aEscolher = false));
+  luz.oninput = () => { hsv[2] = +luz.value / 100; mostrarRoda(); usarCor(corRoda()); };
+  const fecharRoda = (guardar) => {
+    if (roda.hidden) return; roda.hidden = true; $(".ds-mais", box).setAttribute("aria-expanded", "false");
+    if (guardar) { const c = corRoda(); recentes = [c, ...recentes.filter((x) => x !== c)].slice(0, 8); try { localStorage.setItem(CHAVE_REC, JSON.stringify(recentes)); } catch (e) {} }
+  };
+  $(".ds-mais", box).onclick = () => { if (roda.hidden) { roda.hidden = false; $(".ds-mais", box).setAttribute("aria-expanded", "true"); mostrarRoda(); usarCor(corRoda()); } else fecharRoda(true); };
+  $(".dr-ok", roda).onclick = () => fecharRoda(true);
+  $(".dr-rec", roda).onclick = (e) => { const b = e.target.closest("[data-rc]"); if (b) { usarCor(b.dataset.rc); $(".dr-prev", roda).style.background = b.dataset.rc; fecharRoda(false); } };
   box.querySelectorAll(".ds-t[data-t]").forEach((b) => b.onclick = () => { tam = +b.dataset.t; marcar(".ds-t[data-t]", b); });
   box.querySelectorAll(".ds-t[data-tb]").forEach((b) => b.onclick = () => { tamB = +b.dataset.tb; marcar(".ds-t[data-tb]", b); });
   // com a borracha ligada, os tamanhos passam a ser os da borracha
