@@ -3065,18 +3065,23 @@ function jogoForca(el) {
 const COR_LIVRO = ["#4C9BFF", "#FF7A6E", "#FFB45E", "#43A047", "#8E24AA", "#00ACC1", "#EC407A", "#8D6E63"];
 async function vLivros(el) {
   el.innerHTML = cab("Livros", CRIANCA() ? "Os teus livros. Toca num para ler; a app lembra-se da página onde ficaste." : "Ebooks para a família ler na app (EPUB ou PDF). Junta o ficheiro do livro como anexo.");
-  const livros = (await store.list("livros")).sort((a, b) => (a.titulo || "").localeCompare(b.titulo || "", "pt"));
+  const livros = (await store.list("livros")).sort((a, b) => (a.serie || a.titulo || "").localeCompare(b.serie || b.titulo || "", "pt") || (a.ordem || 0) - (b.ordem || 0) || (a.titulo || "").localeCompare(b.titulo || "", "pt"));
   const est = document.createElement("section");
   est.className = "seccao livros";
   const prog = (l) => { try { return +(JSON.parse(localStorage.getItem("casa-livro-" + l.id) || "{}").pct || 0); } catch (e) { return 0; } };
   est.innerHTML = `<div class="sec-cab"><h2>📚 Estante</h2></div>` + (livros.length ? `<div class="estante">${livros.map((l, i) => {
     const f = ficheiroLivro(l), p = prog(l);
     return `<button type="button" class="livro" data-id="${l.id}" ${f ? "" : "disabled"} style="--c:${COR_LIVRO[i % COR_LIVRO.length]}">
-      <span class="capa"><b>${esc(l.titulo || "Sem título")}</b>${l.autor ? `<small>${esc(l.autor)}</small>` : ""}<em>${f ? (f.tipoLivro === "pdf" ? "PDF" : "EPUB") : "sem ficheiro"}</em></span>
+      <span class="capa${l.capa ? " com-img" : ""}" data-capa="${esc(l.capa || "")}"><b>${esc(l.titulo || "Sem título")}</b>${l.autor ? `<small>${esc(l.autor)}</small>` : ""}<em>${f ? (f.tipoLivro === "pdf" ? "PDF" : "EPUB") : "sem ficheiro"}</em></span>
       ${p ? `<span class="lv-prog" aria-label="Lido ${p}%"><i style="width:${p}%"></i></span>` : ""}</button>`; }).join("")}</div>`
     : `<p class="vazio">${CRIANCA() ? "Ainda não há livros. Pede aos pais para juntarem um! 📖" : "Ainda não há livros. Carrega em «+ Adicionar» e junta o ficheiro do livro (EPUB ou PDF)."}</p>`);
   el.appendChild(est);
   est.onclick = (e) => { const b = e.target.closest(".livro"); if (b) abrirLivro(livros.find((x) => x.id === b.dataset.id)); };
+  // capas: imagens guardadas na app (pedidas todas de uma vez)
+  const comCapa = [...est.querySelectorAll(".capa[data-capa]")].filter((c) => c.dataset.capa);
+  if (comCapa.length) sb.storage.from("anexos").createSignedUrls(comCapa.map((c) => c.dataset.capa), 3600).then(({ data }) => {
+    (data || []).forEach((d, i) => { if (d && d.signedUrl) { const im = new Image(); im.onload = () => { comCapa[i].style.backgroundImage = `url("${d.signedUrl}")`; comCapa[i].classList.add("img-ok"); }; im.src = d.signedUrl; } });
+  }).catch(() => {});
   if (!CRIANCA()) await seccao(el, COLS.livros, { titulo: "Gerir livros" });
 }
 function ficheiroLivro(l) {
