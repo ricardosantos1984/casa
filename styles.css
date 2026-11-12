@@ -605,3 +605,15 @@ body.a-ler{overflow:hidden}
 .livro .capa.com-img{background-size:cover;background-position:center}
 .livro .capa.img-ok>*{display:none}
 .livro .capa.img-ok{box-shadow:inset 4px 0 0 rgba(0,0,0,.25),0 6px 16px rgba(0,0,0,.35)}
+
+/* ---------- mensagem recebida por notificação ---------- */
+.msg-aviso{position:fixed;inset:0;z-index:300;background:rgba(10,0,0,.72);display:grid;place-items:center;padding:20px}
+.ma-caixa{width:min(440px,100%);background:#2a0d10;border:3px solid #ff3b3b;border-radius:20px;padding:22px 20px;text-align:center;box-shadow:0 0 0 6px rgba(255,59,59,.25),0 20px 50px rgba(0,0,0,.6);animation:ma-pulsa 1.4s ease-in-out infinite}
+.ma-topo{font-size:56px;line-height:1;animation:ma-abana .6s ease-in-out 3}
+.ma-caixa h2{color:#ff6b6b;font-size:22px;margin:10px 0 12px;line-height:1.25}
+.ma-caixa p{color:#fff;font-size:18px;line-height:1.5;text-align:left;margin:0 0 12px}
+.ma-caixa small{display:block;color:#ffb3b3;margin-bottom:14px}
+.ma-caixa .pri{width:100%;min-height:48px;font-size:17px;background:#ff3b3b;color:#fff}
+@keyframes ma-pulsa{0%,100%{box-shadow:0 0 0 6px rgba(255,59,59,.25),0 20px 50px rgba(0,0,0,.6)}50%{box-shadow:0 0 0 14px rgba(255,59,59,.12),0 20px 50px rgba(0,0,0,.6)}}
+@keyframes ma-abana{0%,100%{transform:rotate(0)}25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
+@media (prefers-reduced-motion:reduce){.ma-caixa,.ma-topo{animation:none}}

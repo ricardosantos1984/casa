@@ -121,7 +121,8 @@ for (const s of subs) {
   const d = s.dados, aud = new URL(d.endpoint).origin;
   const m = mensagem(d.quem);
   if (!m) { console.log((d.quem || "?") + " · " + d.aparelho + ": nada para esta pessoa hoje"); continue; }
-  const msg = JSON.stringify({ titulo: m.titulo, corpo: m.corpo, url: "./", tag: MSG ? "mensagem-" + Date.now() : "avisos-" + hojeIso });
+  const idMsg = "m" + Date.now();
+  const msg = JSON.stringify(MSG ? { tipo: "mensagem", id: idMsg, titulo: m.titulo, corpo: m.corpo, url: "./", tag: "mensagem-" + idMsg } : { titulo: m.titulo, corpo: m.corpo, url: "./", tag: "avisos-" + hojeIso });
   const r = await fetch(d.endpoint, { method: "POST", body: cifrar(d, msg), headers: { Authorization: "vapid t=" + jwt(aud) + ", k=" + publica, "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream", TTL: "86400", Urgency: "normal" } });
   if (r.status === 404 || r.status === 410) { await fetch(SB + "/rest/v1/itens?id=eq." + s.id, { method: "DELETE", headers: H }); console.log((d.quem || "?") + " · " + d.aparelho + ": registo antigo apagado"); }
   else console.log((d.quem || "?") + " · " + d.aparelho + ": " + r.status + (r.ok ? "" : " " + (await r.text()).slice(0, 200)));

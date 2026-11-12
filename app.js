@@ -3170,5 +3170,32 @@ async function abrirLivro(l) {
 
 montarMenus();
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+
+/* ---------- mensagens recebidas por notificação (ex: aviso dos pais) ----------
+   O service worker guarda-as; ao abrir a app (ou ao tocar na notificação) aparecem em destaque até se carregar em "Já li". */
+async function mostrarMensagens() {
+  if (!("caches" in window) || document.querySelector(".msg-aviso")) return;
+  let lista = [];
+  try { const r = await (await caches.open("casa-mensagens")).match("/__mensagens"); lista = r ? await r.json() : []; } catch (e) { return; }
+  const novas = lista.filter((m) => !m.vista);
+  if (!novas.length) return;
+  const m = novas[novas.length - 1]; // a mais antiga primeiro
+  const quando = new Date(m.quando);
+  const ov = document.createElement("div");
+  ov.className = "msg-aviso"; ov.setAttribute("role", "alertdialog"); ov.setAttribute("aria-label", m.titulo);
+  ov.innerHTML = `<div class="ma-caixa"><div class="ma-topo">⚠️</div><h2>${esc(m.titulo)}</h2><p>${esc(m.corpo).replace(/\n/g, "<br>")}</p>
+    <small>Recebida ${quando.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit" })} às ${quando.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}${novas.length > 1 ? " · mais " + (novas.length - 1) + " por ler" : ""}</small>
+    <button type="button" class="pri">✅ Já li</button></div>`;
+  document.body.appendChild(ov);
+  $("button", ov).focus();
+  $("button", ov).onclick = async () => {
+    try { const c = await caches.open("casa-mensagens"); const r = await c.match("/__mensagens"); const l = r ? await r.json() : []; l.forEach((x) => { if (x.id === m.id) x.vista = true; });
+      await c.put("/__mensagens", new Response(JSON.stringify(l), { headers: { "Content-Type": "application/json" } })); } catch (e) {}
+    ov.remove(); mostrarMensagens();
+  };
+}
+if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", (e) => { if (e.data && e.data.tipo === "mensagem-nova") mostrarMensagens(); });
+setTimeout(mostrarMensagens, 1200);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) mostrarMensagens(); });
 $("#btn-copia").onclick = exportarExcel;
 iniciar();
