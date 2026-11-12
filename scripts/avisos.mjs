@@ -7,7 +7,8 @@ import crypto from "node:crypto";
 const SB = "https://uthotfdcfwrdyivhwkpw.supabase.co";
 const KEY = "sb_publishable_1NO-glUWpi7oEzQUS2xX0A_7TS9qNpu";
 const TZ = "Europe/Lisbon";
-const TESTE = process.env.TESTE === "sim";
+const MSG = (process.env.MSG_CORPO || "").trim() ? { titulo: (process.env.MSG_TITULO || "🏠 A Nossa Casa").trim(), corpo: process.env.MSG_CORPO.replace(/\\n/g, "\n").trim(), para: (process.env.MSG_PARA || "todos").trim().toLowerCase() } : null;
+const TESTE = !MSG && process.env.TESTE === "sim";
 const FORCAR = process.env.FORCAR === "sim";
 
 // Só corre às 8h de Lisboa (o cron dispara às 7h e às 8h UTC por causa da hora de verão)
@@ -78,13 +79,15 @@ avisos.sort((a, b) => a.n - b.n);
 // ---------- notificação ----------
 // Cada aparelho recebe a sua mensagem: a Ema só recebe o que é dela (escola, atividades, aniversários)
 const mensagem = (quem) => {
+  // mensagem personalizada (enviada à mão pelo GitHub Actions), só para a pessoa escolhida
+  if (MSG) return MSG.para === "todos" || String(quem || "").trim().toLowerCase().startsWith(MSG.para) ? { titulo: MSG.titulo, corpo: MSG.corpo } : null;
   if (TESTE) return { titulo: "🔔 Teste da app", corpo: "As notificações de A Nossa Casa estão a funcionar (enviadas pelo GitHub)." };
   const lista = /^ema\b/i.test(String(quem || "").trim()) ? avisos.filter((a) => a.ema) : avisos;
   if (!lista.length) return null;
   return { titulo: "🏠 " + lista.length + (lista.length === 1 ? " aviso" : " avisos") + " para hoje",
     corpo: lista.slice(0, 6).map((a) => a.txt).join("\n") + (lista.length > 6 ? "\n+ " + (lista.length - 6) + " na app" : "") };
 };
-if (!TESTE && !avisos.length) { console.log("Sem avisos hoje — não envio nada."); process.exit(0); }
+if (!MSG && !TESTE && !avisos.length) { console.log("Sem avisos hoje — não envio nada."); process.exit(0); }
 
 // ---------- Web Push (RFC 8291 + VAPID), sem bibliotecas ----------
 const b64u = (b) => Buffer.from(b).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -118,9 +121,10 @@ for (const s of subs) {
   const d = s.dados, aud = new URL(d.endpoint).origin;
   const m = mensagem(d.quem);
   if (!m) { console.log((d.quem || "?") + " · " + d.aparelho + ": nada para esta pessoa hoje"); continue; }
-  const msg = JSON.stringify({ titulo: m.titulo, corpo: m.corpo, url: "./", tag: "avisos-" + hojeIso });
+  const msg = JSON.stringify({ titulo: m.titulo, corpo: m.corpo, url: "./", tag: MSG ? "mensagem-" + Date.now() : "avisos-" + hojeIso });
   const r = await fetch(d.endpoint, { method: "POST", body: cifrar(d, msg), headers: { Authorization: "vapid t=" + jwt(aud) + ", k=" + publica, "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream", TTL: "86400", Urgency: "normal" } });
   if (r.status === 404 || r.status === 410) { await fetch(SB + "/rest/v1/itens?id=eq." + s.id, { method: "DELETE", headers: H }); console.log((d.quem || "?") + " · " + d.aparelho + ": registo antigo apagado"); }
   else console.log((d.quem || "?") + " · " + d.aparelho + ": " + r.status + (r.ok ? "" : " " + (await r.text()).slice(0, 200)));
 }
+if (MSG) { console.log("Mensagem personalizada para: " + MSG.para); process.exit(0); }
 console.log(avisos.map((a) => (a.ema ? "[Ema] " : "") + a.txt).join("\n"));

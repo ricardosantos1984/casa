@@ -10,6 +10,18 @@ on:
         type: choice
         options: ["sim", "não"]
         default: "sim"
+      titulo:
+        description: "Mensagem personalizada: título (deixa vazio para os avisos normais)"
+        type: string
+        default: ""
+      corpo:
+        description: "Mensagem personalizada: texto"
+        type: string
+        default: ""
+      para:
+        description: "Mensagem personalizada: para quem (todos, Ricardo, Carolina ou Ema)"
+        type: string
+        default: "todos"
 
 jobs:
   avisos:
@@ -27,4 +39,7 @@ jobs:
           VAPID_PRIVADA: ${{ secrets.VAPID_PRIVADA }}
           TESTE: ${{ github.event_name == 'workflow_dispatch' && inputs.teste == 'sim' && 'sim' || 'não' }}
           FORCAR: ${{ github.event_name == 'workflow_dispatch' && 'sim' || 'não' }}
+          MSG_TITULO: ${{ inputs.titulo }}
+          MSG_CORPO: ${{ inputs.corpo }}
+          MSG_PARA: ${{ inputs.para }}
         run: node scripts/avisos.mjs
