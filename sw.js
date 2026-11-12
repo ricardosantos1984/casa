@@ -1,6 +1,6 @@
 // A Nossa Casa — service worker: a app abre depressa e funciona sem rede (só leitura do que já carregou).
 // Estratégia "rede primeiro": quando há internet usa sempre a versão mais recente.
-const CACHE = "casa-v29";
+const CACHE = "casa-v30";
 const BASE = ["./", "index.html", "styles.css", "app.js", "config.js", "fichas.js", "ingredientes.js", "manifest.json", "icons/icon-192.png"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(BASE)).then(() => self.skipWaiting())); });
 const MSGS = "casa-mensagens"; // mensagens recebidas por notificação (ficam guardadas para se lerem na app)
@@ -25,7 +25,8 @@ self.addEventListener("push", (e) => {
     ? lerMsgs().then((l) => gravarMsgs([{ id, titulo, corpo: d.corpo || "", quando: new Date().toISOString(), vista: false }, ...l.filter((m) => m.id !== id)]))
       .then(() => self.clients.matchAll({ type: "window", includeUncontrolled: true })).then((cs) => cs.forEach((c) => c.postMessage({ tipo: "mensagem-nova" })))
     : Promise.resolve();
-  e.waitUntil(guardar.then(() => self.registration.showNotification(titulo, {
+  // a notificação aparece sempre, mesmo que guardar a mensagem falhe
+  e.waitUntil(guardar.catch(() => {}).then(() => self.registration.showNotification(titulo, {
     body: d.corpo || "", icon: "icons/icon-192.png", badge: "icons/icon-192.png",
     tag: d.tag || undefined, data: { url: d.tipo === "mensagem" ? "./?mensagem=" + encodeURIComponent(id) : d.url || "./" }
   })));
