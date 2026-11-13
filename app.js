@@ -184,8 +184,8 @@ const COLS = {
       { k: "fimTipo", l: "O que acaba nessa data", t: "select", o: ["Contrato", "Fidelização", "Desconto"] },
       { k: "notas", l: "Notas", t: "textarea" },
     ],
-    titulo: (d) => d.desc || d.cat,
-    detalhe: (d) => junta(fmtData(d.data), d.cat, d.quem, d.fixa ? "🔁 fixa (todos os meses)" : d.auto ? "🔁 conta fixa" : "", d.fimContrato ? "📄 " + (d.fimTipo || "Contrato").toLowerCase() + " até " + fmtData(d.fimContrato) : ""),
+    titulo: (d) => d.porLer ? "🧾 Talão: ⏳ a IA está a ler a foto…" : d.erroIA ? "🧾 Talão: ⚠️ " + d.erroIA : (d.desc || d.cat) + (d.lidoPorIA ? " 🧾" : ""),
+    detalhe: (d) => junta(fmtData(d.data), d.cat, d.quem, d.talao && d.talao.linhas ? d.talao.linhas.length + " artigos no talão" : "", d.fixa ? "🔁 fixa (todos os meses)" : d.auto ? "🔁 conta fixa" : "", d.fimContrato ? "📄 " + (d.fimTipo || "Contrato").toLowerCase() + " até " + fmtData(d.fimContrato) : ""),
     valor: (d) => euro(d.valor),
     ordem: (a, b) => String(b.data).localeCompare(String(a.data)),
     vazio: "Sem despesas neste mês.",
@@ -1373,8 +1373,17 @@ function imprimirEmenta() {
    ===================================================================== */
 let ultimaCat = "";
 /* ---------- comparação de preços (documento "precos-compras", escrito pelo n8n) ---------- */
+// último preço pago num talão (documento "precos-pagos") por um artigo da lista
+const normPago = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+function ultimoPago(pagos, artigo) {
+  const L = (pagos && pagos.linhas) || []; if (!L.length) return null;
+  const raiz = (w) => (w.length > 4 ? w.replace(/(oes|aes|ais|eis|es|s)$/, "") : w.replace(/s$/, ""));
+  const ws = normPago(artigo).split(" ").filter((w) => w.length > 2).map(raiz); if (!ws.length) return null;
+  for (let i = L.length - 1; i >= 0; i--) { const n = normPago(L[i].nome).split(" ").map(raiz); if (ws.every((w) => n.some((x) => x.startsWith(w)))) return L[i]; }
+  return null;
+}
 const NOME_LOJA = { continente: "Continente", pingodoce: "Pingo Doce", lidl: "Lidl", auchan: "Auchan" };
-function blocoPrecos(doc, falta) {
+function blocoPrecos(doc, falta, pagos) {
   const cabec = `<div class="sec-cab"><h2>💶 Onde fica mais barato</h2></div>`;
   if (!doc || !doc.artigos) return `<section class="seccao precos">${cabec}<p class="vazio">Os preços aparecem aqui uns minutos depois de mudares a lista (o PC com o n8n tem de estar ligado).</p></section>`;
   const lojas = doc.lojas || Object.keys(NOME_LOJA);
@@ -1413,7 +1422,8 @@ function blocoPrecos(doc, falta) {
       const xy = pts.map((x, i) => `${(i / (pts.length - 1)) * W},${hi === lo ? Hh / 2 : Hh - 3 - ((x[1] - lo) / (hi - lo)) * (Hh - 6)}`).join(" ");
       graf = `<svg class="spark" viewBox="0 0 ${W} ${Hh}" width="${W}" height="${Hh}" aria-hidden="true"><polyline points="${xy}"/></svg>`;
     }
-    return `<tr><th>${esc(n)}<span class="det">${NOME_LOJA[l]}</span></th><td>${graf}</td><td><b>${euro(m)}</b>${h.min != null ? `<span class="det">mín ${euro(Math.min(h.min, m))} · máx ${euro(Math.max(h.max, m))}</span>` : ""}<span class="det">desde ${fmtData(h.desde || new Date().toISOString().slice(0, 10))}</span></td></tr>`;
+    const pg = ultimoPago(pagos, n);
+    return `<tr><th>${esc(n)}<span class="det">${NOME_LOJA[l]}</span>${pg ? `<span class="det">🧾 pagaste ${euro(pg.preco)} no ${esc(pg.loja)} (${fmtData(pg.d)})</span>` : ""}</th><td>${graf}</td><td><b>${euro(m)}</b>${h.min != null ? `<span class="det">mín ${euro(Math.min(h.min, m))} · máx ${euro(Math.max(h.max, m))}</span>` : ""}<span class="det">desde ${fmtData(h.desde || new Date().toISOString().slice(0, 10))}</span></td></tr>`;
   };
   const quando = doc.atualizado ? Math.round((Date.now() - Date.parse(doc.atualizado)) / 60000) : null;
   return `<section class="seccao precos">${cabec}
@@ -1458,7 +1468,8 @@ async function vCompras(el) {
     try { await store.add("compras", { nome, qtd: f.qtd.value.trim(), cat: f.cat.value, comprado: false }); await render(); $("#rapido input[name=nome]")?.focus(); } catch (err) { erro(err); }
   };
   if (so) return;
-  if (falta.length) el.insertAdjacentHTML("beforeend", blocoPrecos(await store.getDoc("precos-compras").catch(() => null), falta));
+  if (falta.length) { const [dp, pg] = await Promise.all([store.getDoc("precos-compras").catch(() => null), store.getDoc("precos-pagos").catch(() => null)]); el.insertAdjacentHTML("beforeend", blocoPrecos(dp, falta, pg)); }
+  el.insertAdjacentHTML("beforeend", blocoTalao()); ligarTalao(el);
   el.onchange = async (e) => {
     const id = e.target.dataset.t; if (!id) return;
     const it = itens.find((x) => x.id === id);
@@ -1627,6 +1638,8 @@ async function vDespesas(el) {
   const [todas, docO] = await Promise.all([store.list("despesas"), store.getDoc("orcamento")]);
   const orc = (docO && docO.cat) || {};
   el.insertAdjacentHTML("beforeend", blocoOrcamento(todas, orc, m1));
+  el.insertAdjacentHTML("beforeend", blocoTalao());
+  ligarTalao(el);
   $("#orc-def", el).onclick = () => definirOrcamento(orc);
   await seccao(el, colMes(m1), { titulo: (atual ? "Este mês · " : "") + nomeDoMes(m1), filtro: (d) => String(d.data || "").startsWith(m1), topo: resumoDespesas });
   await seccao(el, colMes(m2), { titulo: (atual ? "Próximo mês · " : "") + nomeDoMes(m2), filtro: (d) => String(d.data || "").startsWith(m2), topo: resumoDespesas });
@@ -2175,6 +2188,32 @@ async function vContadores(el) {
   if (!CRIANCA()) await blocoTarifasLuz(el);
   await seccao(el, COLS.leituras);
 }
+
+
+/* ---------- talão do supermercado por foto: a app guarda a foto e o n8n (Gemini) lança a despesa ---------- */
+const blocoTalao = () => `<section class="seccao foto-cont talao"><h2>🧾 Talão por foto</h2>
+  <p class="det" style="margin:0">Tira uma foto ao talão das compras e a IA lança a despesa (loja, data e total) e guarda o preço de cada artigo, em 1 a 5 minutos (com o PC ligado). Num talão comprido, tira até 3 fotos, de cima para baixo.</p>
+  <div class="foto-bts"><label class="pri foto-bt">📷 Fotografar talão<input type="file" accept="image/*" capture="environment" data-talao hidden></label><label class="sec foto-bt">🖼️ Escolher da galeria<input type="file" accept="image/*" multiple data-talao hidden></label></div></section>`;
+function ligarTalao(el) {
+  el.querySelectorAll("[data-talao]").forEach((inp) => { inp.onchange = async (e) => { const fs = [...(e.target.files || [])].slice(0, 3); e.target.value = ""; if (fs.length) await talaoPorFoto(fs); }; });
+}
+async function talaoPorFoto(files) {
+  aviso("A enviar o talão…");
+  try {
+    const pasta = `despesas/${novoUid()}`, anexos = [];
+    for (const [i, f] of files.entries()) {
+      const blob = await reduzirFoto(f, 2200);
+      const nome = `talao-${hoje()}-${i + 1}.jpg`;
+      const caminho = `${pasta}/${Date.now()}-${nome}`;
+      await store.upload(caminho, new File([blob], nome, { type: "image/jpeg" }));
+      anexos.push({ nome, caminho, tipo: "image/jpeg", tamanho: blob.size });
+    }
+    await store.add("despesas", { data: hoje(), desc: "Talão de compras", cat: "Supermercado", valor: 0, quem: EU, porLer: true, talao: { fotos: anexos.length }, anexos, pasta, notas: "" });
+    aviso("Talão enviado — a IA vai lançar a despesa daqui a pouco");
+    render();
+  } catch (err) { erro(err); }
+}
+
 /* ---------- leitura por foto: a app guarda a foto e o n8n (Gemini) preenche os números ---------- */
 async function reduzirFoto(file, max = 1600) {
   const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
