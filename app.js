@@ -2877,30 +2877,69 @@ async function vJogos(el) {
 }
 
 /* ---------- Jogos anti-stress ---------- */
-let audioCtx = null;
-function somPop(agudo = 1) {
+let audioCtx = null, ruidoBuf = null;
+let somLigado = true;
+try { somLigado = localStorage.getItem("casa-som-jogos") !== "0"; } catch (e) {}
+// sons sintetizados no telemóvel (sem ficheiros): estalido do plástico, "plop" do pop-it, "plic" das bolas de sabão
+function somPop(tipo = "bolha") {
+  try { navigator.vibrate && navigator.vibrate(tipo === "popit" ? 18 : 10); } catch (e) {}
+  if (!somLigado) return;
   try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    const t = audioCtx.currentTime, o = audioCtx.createOscillator(), g = audioCtx.createGain();
-    o.type = "sine"; o.frequency.setValueAtTime(380 * agudo + Math.random() * 120, t); o.frequency.exponentialRampToValueAtTime(90, t + 0.09);
-    g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-    o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t + 0.11);
+    const A = (audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)());
+    if (A.state === "suspended") A.resume();
+    if (!ruidoBuf) { ruidoBuf = A.createBuffer(1, A.sampleRate * 0.3, A.sampleRate); const d = ruidoBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    const t = A.currentTime + 0.005, v = 0.85 + Math.random() * 0.3;
+    const ruido = (dur, freq, q, vol, tipoF = "bandpass", ini = 0) => {
+      const src = A.createBufferSource(), f = A.createBiquadFilter(), g = A.createGain();
+      src.buffer = ruidoBuf; f.type = tipoF; f.frequency.value = freq; f.Q.value = q;
+      g.gain.setValueAtTime(0.0001, t + ini); g.gain.exponentialRampToValueAtTime(vol, t + ini + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + ini + dur);
+      src.connect(f).connect(g).connect(A.destination); src.start(t + ini, Math.random() * 0.2); src.stop(t + ini + dur + 0.02);
+    };
+    const tom = (f0, f1, dur, vol, forma = "sine", ini = 0) => {
+      const o = A.createOscillator(), g = A.createGain();
+      o.type = forma; o.frequency.setValueAtTime(f0, t + ini); o.frequency.exponentialRampToValueAtTime(f1, t + ini + dur);
+      g.gain.setValueAtTime(0.0001, t + ini); g.gain.exponentialRampToValueAtTime(vol, t + ini + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + ini + dur);
+      o.connect(g).connect(A.destination); o.start(t + ini); o.stop(t + ini + dur + 0.02);
+    };
+    if (tipo === "bolha") {
+      // plástico de bolhas: estalido seco e curto (ar a sair) + pequeno "corpo" grave
+      ruido(0.035, 2200 * v, 1.2, 0.9);
+      ruido(0.06, 900 * v, 0.8, 0.35, "bandpass", 0.004);
+      tom(260 * v, 120, 0.05, 0.25, "triangle");
+    } else if (tipo === "popit") {
+      // pop-it: "plop" abafado de silicone (tom grave que desce + clique suave)
+      tom(330 * v, 140, 0.09, 0.6, "sine");
+      tom(660 * v, 300, 0.04, 0.12, "sine");
+      ruido(0.02, 1500, 0.7, 0.25, "lowpass");
+    } else if (tipo === "popit2") {
+      // pop-it a virar do outro lado: "plop" um pouco mais agudo
+      tom(420 * v, 190, 0.08, 0.55, "sine");
+      ruido(0.018, 1800, 0.7, 0.22, "lowpass");
+    } else {
+      // bola de sabão: "plic" leve e agudo
+      tom(1400 * v, 2600, 0.05, 0.22, "sine");
+      ruido(0.03, 5000, 2, 0.18, "bandpass", 0.01);
+    }
   } catch (e) {}
-  try { navigator.vibrate && navigator.vibrate(12); } catch (e) {}
+}
+const botaoSom = () => `<button type="button" class="sec peq som-jogos" aria-label="Ligar ou desligar o som">${somLigado ? "🔊" : "🔇"}</button>`;
+function ligarBotaoSom(box) {
+  const b = $(".som-jogos", box); if (!b) return;
+  b.onclick = () => { somLigado = !somLigado; b.textContent = somLigado ? "🔊" : "🔇"; try { localStorage.setItem("casa-som-jogos", somLigado ? "1" : "0"); } catch (e) {} if (somLigado) somPop("bolha"); };
 }
 const vivo = (box) => document.body.contains(box);
 const ANTI_STRESS = {
   bolhas(el) {
     el.innerHTML = cab("Plástico de bolhas", "Rebenta as bolhas. Quando acabares, vem uma folha nova!");
-    el.insertAdjacentHTML("beforeend", `<section class="seccao bolhas"><div class="jogo-topo">${voltarJogos}<span class="bolhas-cont"></span></div><div class="bolhas-folha"></div><div class="acoes"><button type="button" class="sec nova">🔄 Folha nova</button></div></section>`);
-    const box = $(".bolhas", el), folha = $(".bolhas-folha", box);
+    el.insertAdjacentHTML("beforeend", `<section class="seccao bolhas"><div class="jogo-topo">${voltarJogos}${botaoSom()}<span class="bolhas-cont"></span></div><div class="bolhas-folha"></div><div class="acoes"><button type="button" class="sec nova">🔄 Folha nova</button></div></section>`);
+    const box = $(".bolhas", el); ligarBotaoSom(box); const folha = $(".bolhas-folha", box);
     let total = 0;
     try { total = +localStorage.getItem("casa-bolhas") || 0; } catch (e) {}
     const conta = () => { $(".bolhas-cont", box).textContent = `🫧 ${total} rebentadas`; try { localStorage.setItem("casa-bolhas", total); } catch (e) {} };
     const nova = () => { folha.innerHTML = Array.from({ length: 48 }, () => `<button type="button" aria-label="Bolha"></button>`).join(""); };
     folha.addEventListener("pointerdown", (e) => {
       const b = e.target.closest("button"); if (!b || b.classList.contains("pum")) return;
-      b.classList.add("pum"); somPop(); total++; conta();
+      b.classList.add("pum"); somPop("bolha"); total++; conta();
       if (!folha.querySelector("button:not(.pum)")) setTimeout(() => { if (vivo(box)) nova(); }, 700);
     });
     $(".nova", box).onclick = nova; nova(); conta();
@@ -2908,14 +2947,14 @@ const ANTI_STRESS = {
   popit(el) {
     const CORES = ["#FF5C7A", "#FF9F43", "#FFD93D", "#6BCB77", "#4D96FF", "#9B5DE5"];
     el.innerHTML = cab("Pop-it", "Carrega em todas as bolinhas. Quando estiverem todas, o pop-it vira!");
-    el.insertAdjacentHTML("beforeend", `<section class="seccao popit"><div class="jogo-topo">${voltarJogos}<span class="popit-cont"></span></div><div class="popit-placa">${CORES.map((c) => Array.from({ length: 6 }, () => `<button type="button" style="--c:${c}" aria-label="Bolinha"></button>`).join("")).join("")}</div></section>`);
-    const box = $(".popit", el), placa = $(".popit-placa", box);
+    el.insertAdjacentHTML("beforeend", `<section class="seccao popit"><div class="jogo-topo">${voltarJogos}${botaoSom()}<span class="popit-cont"></span></div><div class="popit-placa">${CORES.map((c) => Array.from({ length: 6 }, () => `<button type="button" style="--c:${c}" aria-label="Bolinha"></button>`).join("")).join("")}</div></section>`);
+    const box = $(".popit", el); ligarBotaoSom(box); const placa = $(".popit-placa", box);
     let lado = false, viradas = 0;
     const conta = () => { $(".popit-cont", box).textContent = `🔁 Viradas: ${viradas}`; };
     placa.addEventListener("pointerdown", (e) => {
       const b = e.target.closest("button"); if (!b || placa.classList.contains("virar")) return;
       const p = b.classList.contains("on") === lado; if (!p) return;
-      b.classList.toggle("on"); somPop(1.3);
+      b.classList.toggle("on"); somPop(lado ? "popit2" : "popit");
       if (![...placa.children].some((x) => x.classList.contains("on") === lado)) {
         placa.classList.add("virar"); viradas++;
         setTimeout(() => { if (!vivo(box)) return; lado = !lado; placa.classList.toggle("costas"); placa.classList.remove("virar"); conta(); }, 600);
@@ -2925,8 +2964,8 @@ const ANTI_STRESS = {
   },
   sabao(el) {
     el.innerHTML = cab("Bolas de sabão", "Toca nas bolas de sabão antes que voem para longe.");
-    el.insertAdjacentHTML("beforeend", `<section class="seccao sabao"><div class="jogo-topo">${voltarJogos}<span class="sabao-cont">🧼 0</span></div><div class="sabao-ceu"></div></section>`);
-    const box = $(".sabao", el), ceu = $(".sabao-ceu", box);
+    el.insertAdjacentHTML("beforeend", `<section class="seccao sabao"><div class="jogo-topo">${voltarJogos}${botaoSom()}<span class="sabao-cont">🧼 0</span></div><div class="sabao-ceu"></div></section>`);
+    const box = $(".sabao", el); ligarBotaoSom(box); const ceu = $(".sabao-ceu", box);
     let n = 0;
     const criar = () => {
       if (!vivo(box)) return clearInterval(t);
@@ -2941,7 +2980,7 @@ const ANTI_STRESS = {
       const b = e.target.closest(".bola"); if (!b || b.classList.contains("pum")) return;
       const r = b.getBoundingClientRect(), c = ceu.getBoundingClientRect();
       b.style.left = r.left - c.left + "px"; b.style.top = r.top - c.top + "px"; b.style.bottom = "auto";
-      b.classList.add("pum"); somPop(0.8); n++; $(".sabao-cont", box).textContent = `🧼 ${n}`;
+      b.classList.add("pum"); somPop("sabao"); n++; $(".sabao-cont", box).textContent = `🧼 ${n}`;
       setTimeout(() => b.remove(), 350);
     });
     const t = setInterval(criar, 650); criar(); criar();
