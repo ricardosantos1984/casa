@@ -2326,7 +2326,7 @@ function alertasContadores(leituras) {
 const campoData = (col) => (col.campos.find((c) => c.t === "date") || {}).k;
 /* ---------- acessos das crianças (só os pais veem; regras em acessos.sql) ---------- */
 const SECOES_CRIANCA = ["jogos", "desenhos", "livros", "ementas", "compras", "escola", "estudo", "tarefas", "ferias", "familia", "viagens", "contactos", "despensa", "casa", "medicos", "despesas", "veiculos", "contadores"];
-const NOTA_SEC = { jogos: "sopa de letras, galo e forca", desenhos: "bloco de desenho", livros: "ler os livros", ementas: "só ver", compras: "ver e acrescentar", estudo: "fazer fichas", tarefas: "marcar as tarefas feitas", despesas: "inclui o orçamento", medicos: "inclui saúde de todos" };
+const NOTA_SEC = { jogos: "sopa de letras, galo, forca e anti-stress", desenhos: "bloco de desenho", livros: "ler os livros", ementas: "só ver", compras: "ver e acrescentar", estudo: "fazer fichas", tarefas: "marcar as tarefas feitas", despesas: "inclui o orçamento", medicos: "inclui saúde de todos" };
 async function cartaoAcessos(el) {
   if (!sb || CRIANCA()) return;
   const { data, error } = await sb.from("membros").select("email,nome,papel,secoes").eq("papel", "crianca");
@@ -2859,13 +2859,141 @@ async function vJogos(el) {
   if (jogo === "sopa") return jogoSopa(el);
   if (jogo === "galo") return jogoGalo(el);
   if (jogo === "forca") return jogoForca(el);
+  if (ANTI_STRESS[jogo]) return ANTI_STRESS[jogo](el);
   el.innerHTML = cab("Jogos", "Escolhe um jogo. Diverte-te! 🎮");
   el.insertAdjacentHTML("beforeend", `<section class="seccao jogos-menu">
     <a class="jogo-tile" href="#jogos/sopa"><span class="jt-ico">🔤</span><b>Sopa de letras</b><small>Encontra as palavras escondidas</small></a>
     <a class="jogo-tile" href="#jogos/galo"><span class="jt-ico">⭕</span><b>Jogo do galo</b><small>A dois ou contra o computador</small></a>
     <a class="jogo-tile" href="#jogos/forca"><span class="jt-ico">🪢</span><b>Jogo da forca</b><small>Um escolhe a palavra, o outro adivinha</small></a>
+  </section>
+  <h2 class="jogos-sub">😌 Anti-stress</h2>
+  <section class="seccao jogos-menu calmos">
+    <a class="jogo-tile" href="#jogos/bolhas"><span class="jt-ico">🫧</span><b>Plástico de bolhas</b><small>Rebenta as bolhas todas</small></a>
+    <a class="jogo-tile" href="#jogos/popit"><span class="jt-ico">🌈</span><b>Pop-it</b><small>Carrega em todas e vira ao contrário</small></a>
+    <a class="jogo-tile" href="#jogos/sabao"><span class="jt-ico">🧼</span><b>Bolas de sabão</b><small>Toca nas bolas que sobem</small></a>
+    <a class="jogo-tile" href="#jogos/luz"><span class="jt-ico">✨</span><b>Rasto de luz</b><small>Desenha com o dedo e vê desaparecer</small></a>
+    <a class="jogo-tile" href="#jogos/respirar"><span class="jt-ico">🌬️</span><b>Respirar</b><small>Acalma com o balão que enche e esvazia</small></a>
   </section>`);
 }
+
+/* ---------- Jogos anti-stress ---------- */
+let audioCtx = null;
+function somPop(agudo = 1) {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const t = audioCtx.currentTime, o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(380 * agudo + Math.random() * 120, t); o.frequency.exponentialRampToValueAtTime(90, t + 0.09);
+    g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t + 0.11);
+  } catch (e) {}
+  try { navigator.vibrate && navigator.vibrate(12); } catch (e) {}
+}
+const vivo = (box) => document.body.contains(box);
+const ANTI_STRESS = {
+  bolhas(el) {
+    el.innerHTML = cab("Plástico de bolhas", "Rebenta as bolhas. Quando acabares, vem uma folha nova!");
+    el.insertAdjacentHTML("beforeend", `<section class="seccao bolhas"><div class="jogo-topo">${voltarJogos}<span class="bolhas-cont"></span></div><div class="bolhas-folha"></div><div class="acoes"><button type="button" class="sec nova">🔄 Folha nova</button></div></section>`);
+    const box = $(".bolhas", el), folha = $(".bolhas-folha", box);
+    let total = 0;
+    try { total = +localStorage.getItem("casa-bolhas") || 0; } catch (e) {}
+    const conta = () => { $(".bolhas-cont", box).textContent = `🫧 ${total} rebentadas`; try { localStorage.setItem("casa-bolhas", total); } catch (e) {} };
+    const nova = () => { folha.innerHTML = Array.from({ length: 48 }, () => `<button type="button" aria-label="Bolha"></button>`).join(""); };
+    folha.addEventListener("pointerdown", (e) => {
+      const b = e.target.closest("button"); if (!b || b.classList.contains("pum")) return;
+      b.classList.add("pum"); somPop(); total++; conta();
+      if (!folha.querySelector("button:not(.pum)")) setTimeout(() => { if (vivo(box)) nova(); }, 700);
+    });
+    $(".nova", box).onclick = nova; nova(); conta();
+  },
+  popit(el) {
+    const CORES = ["#FF5C7A", "#FF9F43", "#FFD93D", "#6BCB77", "#4D96FF", "#9B5DE5"];
+    el.innerHTML = cab("Pop-it", "Carrega em todas as bolinhas. Quando estiverem todas, o pop-it vira!");
+    el.insertAdjacentHTML("beforeend", `<section class="seccao popit"><div class="jogo-topo">${voltarJogos}<span class="popit-cont"></span></div><div class="popit-placa">${CORES.map((c) => Array.from({ length: 6 }, () => `<button type="button" style="--c:${c}" aria-label="Bolinha"></button>`).join("")).join("")}</div></section>`);
+    const box = $(".popit", el), placa = $(".popit-placa", box);
+    let lado = false, viradas = 0;
+    const conta = () => { $(".popit-cont", box).textContent = `🔁 Viradas: ${viradas}`; };
+    placa.addEventListener("pointerdown", (e) => {
+      const b = e.target.closest("button"); if (!b || placa.classList.contains("virar")) return;
+      const p = b.classList.contains("on") === lado; if (!p) return;
+      b.classList.toggle("on"); somPop(1.3);
+      if (![...placa.children].some((x) => x.classList.contains("on") === lado)) {
+        placa.classList.add("virar"); viradas++;
+        setTimeout(() => { if (!vivo(box)) return; lado = !lado; placa.classList.toggle("costas"); placa.classList.remove("virar"); conta(); }, 600);
+      }
+    });
+    conta();
+  },
+  sabao(el) {
+    el.innerHTML = cab("Bolas de sabão", "Toca nas bolas de sabão antes que voem para longe.");
+    el.insertAdjacentHTML("beforeend", `<section class="seccao sabao"><div class="jogo-topo">${voltarJogos}<span class="sabao-cont">🧼 0</span></div><div class="sabao-ceu"></div></section>`);
+    const box = $(".sabao", el), ceu = $(".sabao-ceu", box);
+    let n = 0;
+    const criar = () => {
+      if (!vivo(box)) return clearInterval(t);
+      if (document.hidden || ceu.children.length > 14) return;
+      const b = document.createElement("button"), tam = 44 + Math.random() * 56;
+      b.type = "button"; b.className = "bola"; b.setAttribute("aria-label", "Bola de sabão");
+      b.style.cssText = `width:${tam}px;height:${tam}px;left:${Math.random() * 85}%;--d:${6 + Math.random() * 5}s;--x:${(Math.random() - 0.5) * 80}px;--h:${Math.floor(Math.random() * 360)}`;
+      b.addEventListener("animationend", (e) => { if (e.animationName === "sobe") b.remove(); });
+      ceu.appendChild(b);
+    };
+    ceu.addEventListener("pointerdown", (e) => {
+      const b = e.target.closest(".bola"); if (!b || b.classList.contains("pum")) return;
+      const r = b.getBoundingClientRect(), c = ceu.getBoundingClientRect();
+      b.style.left = r.left - c.left + "px"; b.style.top = r.top - c.top + "px"; b.style.bottom = "auto";
+      b.classList.add("pum"); somPop(0.8); n++; $(".sabao-cont", box).textContent = `🧼 ${n}`;
+      setTimeout(() => b.remove(), 350);
+    });
+    const t = setInterval(criar, 650); criar(); criar();
+  },
+  luz(el) {
+    el.innerHTML = cab("Rasto de luz", "Arrasta o dedo no ecrã. A luz vai-se apagando devagar…");
+    el.insertAdjacentHTML("beforeend", `<section class="seccao luz"><div class="jogo-topo">${voltarJogos}<select class="luz-cor" aria-label="Cores"><option value="arco">🌈 Arco-íris</option><option value="mar">🌊 Mar</option><option value="fogo">🔥 Fogo</option><option value="galaxia">🌌 Galáxia</option></select></div><canvas class="luz-tela"></canvas></section>`);
+    const box = $(".luz", el), cv = $(".luz-tela", box), cx = cv.getContext("2d"), dpr = window.devicePixelRatio || 1;
+    const PAL = { arco: [0, 360], mar: [170, 230], fogo: [0, 50], galaxia: [250, 320] };
+    let hue = 0, ult = null;
+    const medir = () => { const r = cv.getBoundingClientRect(); cv.width = r.width * dpr; cv.height = r.height * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.fillStyle = "#05060c"; cx.fillRect(0, 0, r.width, r.height); };
+    medir(); window.addEventListener("resize", medir);
+    const ponto = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    const desenha = (p) => {
+      const [a, b] = PAL[$(".luz-cor", box).value]; hue = (hue + 3) % 360; const h = a + (hue / 360) * (b - a);
+      cx.lineCap = "round"; cx.lineJoin = "round"; cx.shadowBlur = 22; cx.shadowColor = `hsl(${h} 100% 60%)`;
+      cx.strokeStyle = `hsl(${h} 100% 65%)`; cx.lineWidth = 9;
+      cx.beginPath(); cx.moveTo((ult || p).x, (ult || p).y); cx.lineTo(p.x, p.y); cx.stroke(); ult = p;
+    };
+    cv.addEventListener("pointerdown", (e) => { cv.setPointerCapture(e.pointerId); ult = null; desenha(ponto(e)); });
+    cv.addEventListener("pointermove", (e) => { if (e.buttons || e.pointerType === "touch") { if (cv.hasPointerCapture(e.pointerId)) desenha(ponto(e)); } });
+    cv.addEventListener("pointerup", () => { ult = null; });
+    const fade = () => {
+      if (!vivo(box)) return window.removeEventListener("resize", medir);
+      const r = cv.getBoundingClientRect(); cx.shadowBlur = 0; cx.fillStyle = "rgba(5,6,12,.045)"; cx.fillRect(0, 0, r.width, r.height);
+      requestAnimationFrame(fade);
+    };
+    requestAnimationFrame(fade);
+  },
+  respirar(el) {
+    el.innerHTML = cab("Respirar", "Segue o balão: inspira quando cresce, segura, e expira quando encolhe.");
+    el.insertAdjacentHTML("beforeend", `<section class="seccao respirar"><div class="jogo-topo">${voltarJogos}<span class="resp-cont"></span></div><div class="resp-zona"><div class="resp-balao"><span class="resp-txt">Carrega em Começar</span></div></div><div class="acoes"><button type="button" class="pri resp-btn">▶️ Começar</button></div></section>`);
+    const box = $(".respirar", el), balao = $(".resp-balao", box), txt = $(".resp-txt", box), btn = $(".resp-btn", box);
+    const FASES = [["Inspira… 🌬️", 4, 1.6], ["Segura… 🤫", 4, 1.6], ["Expira… 😮‍💨", 6, 1], ["Descansa…", 2, 1]];
+    let ativo = false, ciclos = 0, tm = null;
+    const conta = () => { $(".resp-cont", box).textContent = ciclos ? `🫁 ${ciclos} respiraç${ciclos === 1 ? "ão" : "ões"}` : ""; };
+    const fase = (i) => {
+      if (!ativo || !vivo(box)) return;
+      const [t, seg, esc] = FASES[i]; let falta = seg;
+      balao.style.transition = `transform ${seg}s ease-in-out`; balao.style.transform = `scale(${esc})`;
+      const tic = () => { if (!ativo || !vivo(box)) return; txt.innerHTML = `${t}<b>${falta}</b>`; if (falta-- > 1) tm = setTimeout(tic, 1000); else tm = setTimeout(() => { if (i === 3) { ciclos++; conta(); } fase((i + 1) % 4); }, 1000); };
+      tic();
+    };
+    btn.onclick = () => {
+      ativo = !ativo; clearTimeout(tm);
+      btn.textContent = ativo ? "⏸️ Parar" : "▶️ Começar";
+      if (ativo) fase(0); else { balao.style.transform = "scale(1)"; txt.textContent = "Muito bem! 💙"; }
+    };
+    conta();
+  },
+};
+
 const voltarJogos = `<a class="sec peq voltar-jogos" href="#jogos">‹ Jogos</a>`;
 
 /* --- Sopa de letras --- */
