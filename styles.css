@@ -435,6 +435,14 @@ body.crianca [data-ocultar], body.crianca [data-repor] { display: none !importan
 .tab-precos td.barato a { color: var(--verde, #2FB673); }
 .tab-precos td.barato a::after { content: " ✓"; }
 .tab-precos td.nada { color: var(--suave); }
+.tab-precos .seta { font-weight: 800; margin-left: 3px; }
+.tab-precos .seta.desce, .desceram b { color: var(--verde, #2FB673); }
+.tab-precos .seta.sobe { color: #FF6B6B; }
+.desceram { margin: 10px 0; padding: 10px 12px; border-radius: 12px; background: rgba(47,182,115,.10); border: 1px solid rgba(47,182,115,.35); }
+.desceram .chips { margin: 6px 0 0; }
+.desceram s { opacity: .65; }
+.tab-precos table.hist td, .tab-precos table.hist th { vertical-align: middle; }
+.spark polyline { fill: none; stroke: var(--verde, #2FB673); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .tab-precos .det { display: block; font-size: 12px; font-weight: 400; }
 .precos .veredito { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; background: rgba(47,182,115,.12); border: 1px solid rgba(47,182,115,.45); }
 .precos .veredito .trofeu { font-size: 28px; line-height: 1; }

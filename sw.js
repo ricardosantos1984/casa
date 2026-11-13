@@ -1,6 +1,6 @@
 // A Nossa Casa — service worker: a app abre depressa e funciona sem rede (só leitura do que já carregou).
 // Estratégia "rede primeiro": quando há internet usa sempre a versão mais recente.
-const CACHE = "casa-v32";
+const CACHE = "casa-v33";
 const BASE = ["./", "index.html", "styles.css", "app.js", "config.js", "fichas.js", "ingredientes.js", "manifest.json", "icons/icon-192.png"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(BASE)).then(() => self.skipWaiting())); });
 const MSGS = "casa-mensagens"; // mensagens recebidas por notificação (ficam guardadas para se lerem na app)

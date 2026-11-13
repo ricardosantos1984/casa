@@ -1373,7 +1373,7 @@ function imprimirEmenta() {
    ===================================================================== */
 let ultimaCat = "";
 /* ---------- comparação de preços (documento "precos-compras", escrito pelo n8n) ---------- */
-const NOME_LOJA = { continente: "Continente", pingodoce: "Pingo Doce", lidl: "Lidl" };
+const NOME_LOJA = { continente: "Continente", pingodoce: "Pingo Doce", lidl: "Lidl", auchan: "Auchan" };
 function blocoPrecos(doc, falta) {
   const cabec = `<div class="sec-cab"><h2>💶 Onde fica mais barato</h2></div>`;
   if (!doc || !doc.artigos) return `<section class="seccao precos">${cabec}<p class="vazio">Os preços aparecem aqui uns minutos depois de mudares a lista (o PC com o n8n tem de estar ligado).</p></section>`;
@@ -1397,19 +1397,39 @@ function blocoPrecos(doc, falta) {
   // 3) tabela artigo a artigo
   const cel = (n, l) => { const p = P(n, l); if (!p) return `<td class="nada">—</td>`;
     const tit = [p.marca, p.nome, p.qtd, p.unit].filter(Boolean).join(" · ") + (p.plus ? " · preço com Lidl Plus" : "");
-    return `<td class="${p.preco === min(n) ? "barato" : ""}"><a href="${esc(p.url)}" target="_blank" rel="noopener" title="${esc(tit)}">${euro(p.preco)}${p.plus ? "*" : ""}</a><span class="det">${esc(p.qtd || "")}</span></td>`; };
+    const h = p.hist || {};
+    const seta = h.desceu ? `<span class="seta desce" title="Baixou: antes ${euro(h.ant)}">↓</span>` : h.subiu ? `<span class="seta sobe" title="Subiu: antes ${euro(h.ant)}">↑</span>` : "";
+    const tit2 = tit + (h.ant != null && h.ant !== p.preco ? ` · antes ${euro(h.ant)} (${fmtData(h.antD)})` : "");
+    return `<td class="${p.preco === min(n) ? "barato" : ""}"><a href="${esc(p.url)}" target="_blank" rel="noopener" title="${esc(tit2)}">${euro(p.preco)}${p.plus ? "*" : ""}</a>${seta}<span class="det">${esc(p.qtd || "")}</span></td>`; };
+  // 4) histórico: o que baixou desde a última vez e a evolução de cada artigo
+  const desceram = [];
+  nomes.forEach((n) => lojas.forEach((l) => { const p = P(n, l); if (p && p.hist && p.hist.desceu) desceram.push({ n, l, p }); }));
+  const linhaHist = (n) => {
+    const m = min(n); if (m === null) return "";
+    const l = lojas.find((x) => P(n, x) && P(n, x).preco === m), h = P(n, l).hist || {}, pts = h.pts || [];
+    let graf = `<span class="det">a começar</span>`;
+    if (pts.length > 1) {
+      const vs = pts.map((x) => x[1]), lo = Math.min(...vs), hi = Math.max(...vs), W = 110, Hh = 28;
+      const xy = pts.map((x, i) => `${(i / (pts.length - 1)) * W},${hi === lo ? Hh / 2 : Hh - 3 - ((x[1] - lo) / (hi - lo)) * (Hh - 6)}`).join(" ");
+      graf = `<svg class="spark" viewBox="0 0 ${W} ${Hh}" width="${W}" height="${Hh}" aria-hidden="true"><polyline points="${xy}"/></svg>`;
+    }
+    return `<tr><th>${esc(n)}<span class="det">${NOME_LOJA[l]}</span></th><td>${graf}</td><td><b>${euro(m)}</b>${h.min != null ? `<span class="det">mín ${euro(Math.min(h.min, m))} · máx ${euro(Math.max(h.max, m))}</span>` : ""}<span class="det">desde ${fmtData(h.desde || new Date().toISOString().slice(0, 10))}</span></td></tr>`;
+  };
   const quando = doc.atualizado ? Math.round((Date.now() - Date.parse(doc.atualizado)) / 60000) : null;
   return `<section class="seccao precos">${cabec}
     ${melhor ? `<div class="veredito"><span class="trofeu">🏆</span><div><b>O ${NOME_LOJA[melhor]} é o mais barato.</b>
-      <span class="det">Comparando os mesmos ${comuns.length} ${comuns.length === 1 ? "artigo" : "artigos"} que há nas 3 lojas: ${ordem.map((l, k) => `${NOME_LOJA[l]} <b>${euro(tc[l])}</b>${k ? ` (+${euro(tc[l] - tc[melhor])})` : ""}`).join(" · ")}.</span></div></div>`
-      : `<p class="det">Ainda não há artigos que existam nas 3 lojas para dizer qual é a mais barata.</p>`}
+      <span class="det">Comparando os mesmos ${comuns.length} ${comuns.length === 1 ? "artigo" : "artigos"} que há nas ${lojas.length} lojas: ${ordem.map((l, k) => `${NOME_LOJA[l]} <b>${euro(tc[l])}</b>${k ? ` (+${euro(tc[l] - tc[melhor])})` : ""}`).join(" · ")}.</span></div></div>`
+      : `<p class="det">Ainda não há artigos que existam em todas as lojas para dizer qual é a mais barata.</p>`}
     <details class="plano-d"><summary><span>🔀 Para poupar ao máximo: <b>${euro(totPlano)}</b> em ${lojas.filter((l) => plano[l].length).length} ${lojas.filter((l) => plano[l].length).length === 1 ? "loja" : "lojas"}</span><span class="det">ver o que comprar em cada loja</span></summary>
     <div class="plano">${lojas.filter((l) => plano[l].length).map((l) => `<div class="plano-l"><div class="plano-cab"><b>${NOME_LOJA[l]}</b><span>${plano[l].length} ${plano[l].length === 1 ? "artigo" : "artigos"} · <b>${euro(soma(l, plano[l]))}</b></span></div><p class="chips">${plano[l].map((n) => chip(n, l)).join("")}</p></div>`).join("")}
       <div class="plano-tot">Total: <b>${euro(totPlano)}</b> por ${nomes.length - semPreco.length} artigos</div>
       ${semPreco.length ? `<p class="det">Sem preço em nenhuma loja (${semPreco.length}): ${semPreco.map(esc).join(", ")}.</p>` : ""}</div></details>
+    ${desceram.length ? `<div class="desceram"><b>📉 Baixaram de preço</b><p class="chips">${desceram.map((d) => `<span class="chip">${esc(d.n)} · ${NOME_LOJA[d.l]} <s>${euro(d.p.hist.ant)}</s> <b>${euro(d.p.preco)}</b></span>`).join("")}</p></div>` : ""}
     <details><summary>Ver todos os preços, artigo a artigo</summary><div class="tab-precos"><table><thead><tr><th>Artigo</th>${lojas.map((l) => `<th>${NOME_LOJA[l]}</th>`).join("")}</tr></thead>
       <tbody>${nomes.map((n) => `<tr><th>${esc(n)}${doc.artigos[n].nota ? `<span class="det">${esc(doc.artigos[n].nota)}</span>` : ""}</th>${lojas.map((l) => cel(n, l)).join("")}</tr>`).join("")}</tbody></table></div>
-      <p class="det">✓ verde = mais barato. Toca num preço para ver o produto no site da loja. * preço com Lidl Plus. Preços das lojas online (no Lidl, os da loja desta semana); em Tomar podem variar. ${(doc.fora || []).map(esc).join(" · ")}.</p></details>
+      <p class="det">✓ verde = mais barato · ↓ baixou / ↑ subiu desde a última vez. Toca num preço para ver o produto no site da loja. * preço com Lidl Plus. Preços das lojas online (no Lidl, os da loja desta semana); em Tomar podem variar. ${(doc.fora || []).map(esc).join(" · ")}.</p></details>
+    <details><summary>📊 Histórico de preços</summary><div class="tab-precos"><table class="hist"><tbody>${nomes.map(linhaHist).join("")}</tbody></table></div>
+      <p class="det">O preço mais barato de cada artigo ao longo do tempo (um ponto por dia em que o artigo está na lista). Quando um artigo baixa pelo menos 5%, chega um aviso no WhatsApp.</p></details>
     <p class="det" style="margin:0">${quando === null ? "" : quando < 2 ? "Atualizado agora" : quando < 120 ? `Atualizado há ${quando} min` : `Atualizado ${fmtData(doc.atualizado.slice(0, 10))}`}${faltam ? ` · ${faltam} ${faltam === 1 ? "artigo novo ainda" : "artigos novos ainda"} a calcular` : ""}</p>
   </section>`;
 }
