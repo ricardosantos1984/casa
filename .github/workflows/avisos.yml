@@ -22,6 +22,10 @@ on:
         description: "Mensagem personalizada: para quem (todos, Ricardo, Carolina ou Ema)"
         type: string
         default: "todos"
+      url:
+        description: "Mensagem personalizada: página a abrir ao tocar (ex.: ./#estudo)"
+        type: string
+        default: ""
 
 jobs:
   avisos:
@@ -42,4 +46,5 @@ jobs:
           MSG_TITULO: ${{ inputs.titulo }}
           MSG_CORPO: ${{ inputs.corpo }}
           MSG_PARA: ${{ inputs.para }}
+          MSG_URL: ${{ inputs.url }}
         run: node scripts/avisos.mjs

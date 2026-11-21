@@ -398,3 +398,91 @@ window.FICHAS = [
   };
   (window.FICHAS || []).forEach((d) => { d.fichas.push(...(MAIS[d.id] || [])); });
 })();
+
+// ---------------------------------------------------------------------
+//  Treino para os testes de 25/11 (Matemática) e 26/11 (Ciências)
+//  Aparecem no topo da disciplina.
+// ---------------------------------------------------------------------
+(function () {
+  const TREINO = {
+    mat: [
+      {
+        id: "matT1", titulo: "📝 Treino p/ teste (quarta 25/11) · Números", sub: "Divisores, múltiplos, primos, m.d.c., m.m.c., potências e expressões",
+        q: [
+          { t: "mc", p: "Qual destes números é divisível por 2, por 3 e por 5 ao mesmo tempo?", o: ["25", "45", "60", "62"], c: 2, e: "60 é par (÷2), 6+0 = 6 (÷3) e acaba em 0 (÷5)." },
+          { t: "mc", p: "Um número é divisível por 9 quando…", o: ["acaba em 9", "a soma dos algarismos é múltiplo de 9", "é ímpar", "acaba em 0 ou 5"], c: 1, e: "Ex.: 828 → 8+2+8 = 18, múltiplo de 9." },
+          { t: "num", p: "Quantos divisores tem o número 12?", r: 6, e: "1, 2, 3, 4, 6 e 12 → 6 divisores." },
+          { t: "mc", p: "Qual destes números é composto (não é primo)?", o: ["13", "17", "19", "21"], c: 3, e: "21 = 3 × 7, tem mais de dois divisores." },
+          { t: "mc", p: "O número 1 é…", o: ["primo", "composto", "nem primo nem composto", "primo e composto"], c: 2, e: "O 1 só tem um divisor (ele próprio), por isso não é primo nem composto." },
+          { t: "txt", p: "Decompõe 36 em fatores primos (escreve assim: 2x2x3x3)", r: ["2x2x3x3", "2×2×3×3", "2*2*3*3", "2^2x3^2", "2²x3²", "2²×3²"], e: "36 = 2 × 2 × 3 × 3 = 2² × 3²." },
+          { t: "num", p: "Calcula o m.d.c. (24, 36)", r: 12, e: "24 = 2³×3 e 36 = 2²×3². Fatores comuns com o menor expoente: 2²×3 = 12." },
+          { t: "num", p: "Calcula o m.m.c. (6, 8)", r: 24, e: "Múltiplos de 8: 8, 16, 24… O 24 também é múltiplo de 6." },
+          { t: "num", p: "Calcula: 3² + 2³", r: 17, e: "3² = 9 e 2³ = 8; 9 + 8 = 17." },
+          { t: "num", p: "Calcula: 10³", r: 1000, e: "10 × 10 × 10 = 1000 (o 1 seguido de 3 zeros)." },
+          { t: "num", p: "Calcula: 20 − 3 × (2 + 4)", r: 2, e: "Primeiro os parênteses: 2+4 = 6; depois 3×6 = 18; por fim 20 − 18 = 2." },
+          { t: "num", p: "Calcula: (15 + 5) ÷ 4 + 2 × 3", r: 11, e: "(20) ÷ 4 = 5; 2 × 3 = 6; 5 + 6 = 11." },
+          { t: "num", p: "A Ema tem 18 lápis e 24 canetas. Quer fazer estojos iguais, com o maior número possível de estojos, sem sobrar nada. Quantos estojos consegue fazer?", r: 6, e: "É o m.d.c. (18, 24) = 6. Cada estojo leva 3 lápis e 4 canetas." },
+          { t: "num", p: "Um autocarro passa de 10 em 10 minutos e outro de 15 em 15. Saíram juntos às 8h. Daqui a quantos minutos voltam a sair juntos?", r: 30, e: "É o m.m.c. (10, 15) = 30 minutos (às 8h30)." },
+          { t: "mc", p: "Qual é o resto da divisão de 47 por 5?", o: ["0", "2", "7", "9"], c: 1, e: "5 × 9 = 45 e 47 − 45 = 2." },
+        ],
+      },
+      {
+        id: "matT2", titulo: "📝 Treino p/ teste (quarta 25/11) · Geometria", sub: "Ângulos, retas, triângulos e áreas",
+        q: [
+          { t: "mc", p: "Duas retas que se cruzam formando ângulos de 90° são…", o: ["paralelas", "perpendiculares", "oblíquas", "coincidentes"], c: 1, e: "Retas perpendiculares formam ângulos retos." },
+          { t: "mc", p: "Duas retas que nunca se cruzam (sempre à mesma distância) são…", o: ["paralelas", "perpendiculares", "concorrentes", "semirretas"], c: 0, e: "São retas paralelas, como os carris do comboio." },
+          { t: "mc", p: "Um ângulo de 35° é…", o: ["agudo", "reto", "obtuso", "raso"], c: 0, e: "Menor do que 90°: agudo." },
+          { t: "num", p: "Dois ângulos complementares somam 90°. Se um mede 40°, quanto mede o outro?", r: 50, e: "90 − 40 = 50°." },
+          { t: "num", p: "Dois ângulos suplementares somam 180°. Se um mede 110°, quanto mede o outro?", r: 70, e: "180 − 110 = 70°." },
+          { t: "num", p: "Quanto mede um ângulo giro (uma volta completa), em graus?", r: 360, e: "Uma volta inteira = 360°." },
+          { t: "num", p: "Num triângulo retângulo, um dos ângulos agudos mede 30°. Quanto mede o outro ângulo agudo?", r: 60, e: "180 − 90 − 30 = 60°." },
+          { t: "mc", p: "Um triângulo com dois lados iguais chama-se…", o: ["escaleno", "isósceles", "equilátero", "obtusângulo"], c: 1, e: "Dois lados iguais = isósceles." },
+          { t: "mc", p: "Um triângulo com um ângulo de 100° é…", o: ["acutângulo", "retângulo", "obtusângulo", "equilátero"], c: 2, e: "Tem um ângulo obtuso: obtusângulo." },
+          { t: "mc", p: "É possível construir um triângulo com lados de 2 cm, 3 cm e 7 cm?", o: ["Sim", "Não"], c: 1, e: "Não: 2 + 3 = 5, que é menor do que 7. Cada lado tem de ser menor que a soma dos outros dois." },
+          { t: "num", p: "Qual é a área (em cm²) de um quadrado com 7 cm de lado?", r: 49, e: "7 × 7 = 49 cm²." },
+          { t: "num", p: "Qual é a área (em cm²) de um triângulo com 8 cm de base e 5 cm de altura?", r: 20, e: "(base × altura) ÷ 2 = (8 × 5) ÷ 2 = 20 cm²." },
+          { t: "num", p: "Um retângulo tem 30 cm de perímetro e 10 cm de comprimento. Quanto mede a largura (em cm)?", r: 5, e: "30 = 10 + 10 + 2 × largura → 2 × largura = 10 → largura = 5 cm." },
+        ],
+      },
+    ],
+    cn: [
+      {
+        id: "cnT1", titulo: "📝 Treino p/ teste (quinta 26/11) · A Terra", sub: "Rochas, minerais, solo, água e ar",
+        q: [
+          { t: "mc", p: "Uma rocha é formada por…", o: ["um ou mais minerais", "só água", "só areia", "plantas mortas"], c: 0, e: "As rochas são formadas por minerais (ex.: o granito tem quartzo, feldspato e mica)." },
+          { t: "mc", p: "O granito é uma rocha…", o: ["magmática (formada pelo magma que arrefeceu)", "sedimentar", "líquida", "artificial"], c: 0, e: "O granito forma-se quando o magma arrefece lentamente dentro da Terra." },
+          { t: "mc", p: "O calcário faz efervescência (borbulha) quando lhe pomos…", o: ["água", "ácido (ex.: vinagre)", "sal", "areia"], c: 1, e: "O calcário reage com ácidos e liberta bolhas de gás." },
+          { t: "mc", p: "A desagregação das rochas pela água, vento e variações de temperatura chama-se…", o: ["erosão / meteorização", "fotossíntese", "evaporação", "fusão"], c: 0, e: "As rochas vão-se partindo e desgastando: meteorização e erosão." },
+          { t: "mc", p: "Qual é a camada do solo mais rica em húmus (matéria orgânica)?", o: ["a camada de cima (superficial)", "a rocha-mãe", "a mais funda", "nenhuma"], c: 0, e: "O húmus vem dos restos de seres vivos e fica na camada de cima, mais escura." },
+          { t: "mc", p: "O solo arenoso…", o: ["retém muita água", "deixa passar a água com facilidade", "é o mais fértil", "é pegajoso"], c: 1, e: "A areia tem grãos grandes e espaços entre eles: a água passa depressa (solo permeável)." },
+          { t: "mc", p: "O solo argiloso…", o: ["deixa passar a água muito depressa", "retém muita água", "não tem partículas", "é só pedras"], c: 1, e: "A argila tem partículas muito finas e é pouco permeável: retém a água." },
+          { t: "mc", p: "A passagem da água do estado líquido para o gasoso chama-se…", o: ["solidificação", "fusão", "evaporação", "condensação"], c: 2, e: "Líquido → gasoso = evaporação." },
+          { t: "mc", p: "Quando o vapor de água arrefece e forma gotinhas (ex.: no espelho da casa de banho), dá-se a…", o: ["condensação", "evaporação", "fusão", "solidificação"], c: 0, e: "Gasoso → líquido = condensação." },
+          { t: "mc", p: "A maior parte da água da Terra é…", o: ["doce, nos rios", "salgada, nos oceanos", "gelo nas montanhas", "água da torneira"], c: 1, e: "Cerca de 97% da água é salgada (oceanos e mares)." },
+          { t: "mc", p: "Qual é o gás que existe em maior quantidade no ar?", o: ["oxigénio", "dióxido de carbono", "azoto (nitrogénio)", "vapor de água"], c: 2, e: "O ar tem cerca de 78% de azoto e 21% de oxigénio." },
+          { t: "mc", p: "Que gás do ar os seres vivos usam na respiração?", o: ["oxigénio", "azoto", "hélio", "dióxido de carbono"], c: 0, e: "Respiramos oxigénio e libertamos dióxido de carbono." },
+          { t: "mc", p: "Qual destas ações ajuda a poupar água?", o: ["tomar banhos de imersão longos", "fechar a torneira ao lavar os dentes", "regar ao meio-dia", "lavar o carro com mangueira aberta"], c: 1, e: "Fechar a torneira enquanto escovamos os dentes poupa muitos litros." },
+          { t: "mc", p: "A água própria para beber chama-se…", o: ["água potável", "água salgada", "água residual", "água destilada do mar"], c: 0, e: "Potável = pode beber-se sem fazer mal à saúde." },
+        ],
+      },
+      {
+        id: "cnT2", titulo: "📝 Treino p/ teste (quinta 26/11) · Seres vivos", sub: "Célula, animais, plantas e cadeias alimentares",
+        q: [
+          { t: "mc", p: "Qual é a principal diferença entre a célula vegetal e a animal?", o: ["a vegetal tem parede celular e cloroplastos", "a animal tem núcleo e a vegetal não", "a vegetal não tem membrana", "não há diferenças"], c: 0, e: "Só as células das plantas têm parede celular e cloroplastos." },
+          { t: "mc", p: "Os animais que têm esqueleto interno com coluna vertebral são…", o: ["invertebrados", "vertebrados", "unicelulares", "plantas"], c: 1, e: "Têm vértebras: vertebrados (peixes, anfíbios, répteis, aves, mamíferos)." },
+          { t: "mc", p: "O revestimento das aves é feito de…", o: ["pelos", "escamas", "penas", "pele nua"], c: 2, e: "As aves têm penas." },
+          { t: "mc", p: "Os animais que se alimentam só de plantas chamam-se…", o: ["carnívoros", "herbívoros", "omnívoros", "necrófagos"], c: 1, e: "Herbívoros comem plantas (ex.: coelho, vaca)." },
+          { t: "mc", p: "Os animais que nascem de ovos postos pela mãe são…", o: ["vivíparos", "ovíparos", "herbívoros", "mamíferos"], c: 1, e: "Ovíparos nascem de ovos (ex.: galinha). Vivíparos desenvolvem-se na barriga da mãe." },
+          { t: "mc", p: "Os peixes respiram por…", o: ["pulmões", "brânquias", "pele apenas", "traqueias"], c: 1, e: "As brânquias retiram da água o oxigénio." },
+          { t: "mc", p: "Qual destes animais é um anfíbio?", o: ["lagarto", "rã", "golfinho", "pinguim"], c: 1, e: "A rã vive na água quando é girino e em terra quando é adulta." },
+          { t: "mc", p: "As plantas produzem o seu alimento através da…", o: ["respiração", "fotossíntese", "digestão", "germinação"], c: 1, e: "Na fotossíntese usam luz, água e dióxido de carbono e libertam oxigénio." },
+          { t: "mc", p: "Que parte da planta absorve a água e os sais minerais do solo?", o: ["a folha", "a flor", "a raiz", "o fruto"], c: 2, e: "A raiz fixa a planta e absorve água e sais minerais." },
+          { t: "mc", p: "Em «trigo → rato → cobra → águia», o produtor é…", o: ["o trigo", "o rato", "a cobra", "a águia"], c: 0, e: "O produtor faz o seu alimento: as plantas (o trigo)." },
+          { t: "mc", p: "Na mesma cadeia, a cobra é consumidor de…", o: ["1.ª ordem", "2.ª ordem", "3.ª ordem", "é produtor"], c: 1, e: "Come o rato (consumidor de 1.ª ordem), por isso é de 2.ª ordem." },
+          { t: "num", p: "Num microscópio com ocular de 10× e objetiva de 10×, qual é a ampliação total?", r: 100, e: "10 × 10 = 100 vezes." },
+        ],
+      },
+    ],
+  };
+  (window.FICHAS || []).forEach((d) => { d.fichas.unshift(...(TREINO[d.id] || [])); });
+})();
