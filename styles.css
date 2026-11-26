@@ -650,3 +650,12 @@ body.a-ler{overflow:hidden}
 @keyframes ma-pulsa{0%,100%{box-shadow:0 0 0 6px rgba(255,59,59,.25),0 20px 50px rgba(0,0,0,.6)}50%{box-shadow:0 0 0 14px rgba(255,59,59,.12),0 20px 50px rgba(0,0,0,.6)}}
 @keyframes ma-abana{0%,100%{transform:rotate(0)}25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
 @media (prefers-reduced-motion:reduce){.ma-caixa,.ma-topo{animation:none}}
+
+/* avisos das automações */
+.notif-banner{display:flex;align-items:center;gap:8px;margin:0 0 14px;padding:12px 14px;border-radius:var(--raio);background:var(--painel2);border:1px solid var(--acento);color:inherit;text-decoration:none;font-weight:500}
+.notif-banner span{margin-left:auto;color:var(--acento);font-weight:600}
+.notif.nova{border-left:4px solid var(--acento)}
+.notif-cab{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.notif-cab h2{margin:0;font-size:1.02rem;flex:1}
+.notif-cab small{opacity:.7}
+.notif-corpo{margin:.5rem 0 0;line-height:1.5;overflow-wrap:anywhere}

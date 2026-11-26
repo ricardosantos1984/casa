@@ -2516,9 +2516,40 @@ async function apagarVarios(itens) {
 }
 
 /* =====================================================================
+   NOTIFICAÇÕES (avisos das automações do n8n: faturas, talões, chat do site…)
+   Cada aviso fica guardado na app (módulo "notificacoes"), por isso ao tocar
+   na notificação do telemóvel abre-se esta página com o texto completo.
+   ===================================================================== */
+const minhasNotificacoes = async () => (await store.list("notificacoes"))
+  .filter((n) => !n.para || n.para === "Todos" || String(n.para).toLowerCase() === String(EU).toLowerCase())
+  .sort((a, b) => String(b.quando || "").localeCompare(String(a.quando || "")));
+async function bannerNotificacoes(v) {
+  const novas = (await minhasNotificacoes()).filter((n) => !n.lida).length;
+  if (!novas || !v.isConnected) return;
+  const a = document.createElement("a");
+  a.className = "notif-banner"; a.href = "#notificacoes";
+  a.innerHTML = `🔔 <b>${novas}</b> ${novas === 1 ? "aviso novo" : "avisos novos"} das automações <span>Ver →</span>`;
+  v.prepend(a);
+}
+async function vNotificacoes(el) {
+  const lista = (await minhasNotificacoes()).slice(0, 80);
+  const quando = (q) => { const d = new Date(q); return isNaN(d) ? "" : d.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit" }) + " às " + d.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }); };
+  const ligar = (t) => esc(t).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>').replace(/\n/g, "<br>");
+  el.innerHTML = `${cab("🔔 Avisos", "O que as automações te mandaram: faturas, talões, preços, chat do site e outros. Os mais recentes primeiro.")}
+    ${lista.length ? lista.map((n) => `<section class="seccao notif ${n.lida ? "" : "nova"}"><div class="notif-cab"><h2>${esc(n.titulo || "Aviso")}</h2><small>${quando(n.quando)}</small></div>
+      ${n.corpo && n.corpo !== n.titulo ? `<p class="notif-corpo">${ligar(n.corpo)}</p>` : ""}</section>`).join("")
+      : `<p class="vazio">Ainda não há avisos.</p>`}
+    ${lista.some((n) => n.lida) ? `<p><button type="button" class="sec" id="notif-limpar">🧹 Apagar os avisos já lidos</button></p>` : ""}`;
+  const b = $("#notif-limpar", el);
+  if (b) b.onclick = async () => { b.disabled = true; for (const n of lista.filter((x) => x.lida)) { try { await store.remove(n.id); } catch (e) {} } render(); };
+  // marcar como lidos (depois de mostrar, para continuarem destacados nesta visita)
+  for (const n of lista.filter((x) => !x.lida)) { const { id, ...d } = n; try { await store.update(id, { ...d, lida: true }); } catch (e) {} }
+}
+
+/* =====================================================================
    NAVEGAÇÃO
    ===================================================================== */
-const ROTAS = { inicio: vInicio, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, estudo: vEstudo, viagens: vViagens, ferias: vFerias, medicos: vMedicos, tarefas: vTarefas, despensa: vDespensa, contactos: vContactos, contadores: vContadores, emergencia: vEmergencia, jogos: vJogos, desenhos: vDesenhos, livros: vLivros, dados: vDados };
+const ROTAS = { inicio: vInicio, notificacoes: vNotificacoes, ementas: vEmenta, compras: vCompras, despesas: vDespesas, veiculos: vVeiculos, casa: vCasa, familia: vFamilia, escola: vEscola, estudo: vEstudo, viagens: vViagens, ferias: vFerias, medicos: vMedicos, tarefas: vTarefas, despensa: vDespensa, contactos: vContactos, contadores: vContadores, emergencia: vEmergencia, jogos: vJogos, desenhos: vDesenhos, livros: vLivros, dados: vDados };
 let ROTA_ARGS = [];
 async function render() {
   if (!store) return;
@@ -2531,6 +2562,7 @@ async function render() {
   v.className = "vista";
   $("#conteudo").replaceChildren(v);
   try { await ROTAS[rota](v); } catch (e) { console.error(e); v.innerHTML = `<p class="erro">Não foi possível carregar: ${esc(e.message || e)}</p>`; }
+  if (rota === "inicio" && !CRIANCA()) bannerNotificacoes(v).catch(() => {});
 }
 window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); });
 document.addEventListener("visibilitychange", () => {

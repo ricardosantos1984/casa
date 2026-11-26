@@ -1,6 +1,6 @@
 // A Nossa Casa — service worker: a app abre depressa e funciona sem rede (só leitura do que já carregou).
 // Estratégia "rede primeiro": quando há internet usa sempre a versão mais recente.
-const CACHE = "casa-v35";
+const CACHE = "casa-v36";
 const BASE = ["./", "index.html", "styles.css", "app.js", "config.js", "fichas.js", "ingredientes.js", "manifest.json", "icons/icon-192.png"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(BASE)).then(() => self.skipWaiting())); });
 const MSGS = "casa-mensagens"; // mensagens recebidas por notificação (ficam guardadas para se lerem na app)
@@ -21,14 +21,14 @@ self.addEventListener("push", (e) => {
   const titulo = d.titulo || "A Nossa Casa";
   const id = d.id || String(Date.now());
   // mensagens enviadas a uma pessoa: guardam-se para aparecerem na app ao abrir (a notificação desaparece quando se toca nela)
-  const guardar = d.tipo === "mensagem"
+  const guardar = d.tipo === "mensagem" && !(d.url && d.url.includes("#notificacoes"))
     ? lerMsgs().then((l) => gravarMsgs([{ id, titulo, corpo: d.corpo || "", quando: new Date().toISOString(), vista: false }, ...l.filter((m) => m.id !== id)]))
       .then(() => self.clients.matchAll({ type: "window", includeUncontrolled: true })).then((cs) => cs.forEach((c) => c.postMessage({ tipo: "mensagem-nova" })))
     : Promise.resolve();
   // a notificação aparece sempre, mesmo que guardar a mensagem falhe
   e.waitUntil(guardar.catch(() => {}).then(() => self.registration.showNotification(titulo, {
     body: d.corpo || "", icon: "icons/icon-192.png", badge: "icons/icon-192.png",
-    tag: d.tag || undefined, data: { url: d.tipo === "mensagem" ? "./?mensagem=" + encodeURIComponent(id) : d.url || "./" }
+    tag: d.tag || undefined, data: { url: d.url && d.url !== "./" ? d.url : d.tipo === "mensagem" ? "./?mensagem=" + encodeURIComponent(id) : "./" }
   })));
 });
 self.addEventListener("notificationclick", (e) => {
